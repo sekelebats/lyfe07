@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Notes</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #fafafa;
+            --bg-card: #ffffff;
+            --text: #1a1a1a;
+            --text-secondary: #666666;
+            --border: #e0e0e0;
+            --accent: #667eea;
+            --accent-hover: #5568d3;
+            --shadow: rgba(0,0,0,0.08);
+            --delete: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f0f0f;
+            --bg-card: #1a1a1a;
+            --text: #ffffff;
+            --text-secondary: #a0a0a0;
+            --border: #2a2a2a;
+            --shadow: rgba(0,0,0,0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            transition: all 0.3s;
+        }
+
+        .app {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-box input {
+            padding: 0.7rem 1rem 0.7rem 2.8rem;
+            border: 2px solid var(--border);
+            border-radius: 50px;
+            background: var(--bg-card);
+            color: var(--text);
+            font-size: 0.95rem;
+            width: 250px;
+            transition: all 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-icon {
+            background: var(--bg-card);
+            color: var(--text);
+            border: 2px solid var(--border);
+            padding: 0.7rem;
+            border-radius: 50%;
+        }
+
+        .btn-icon:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.6rem 1.2rem;
+            border: 2px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .note-card {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .note-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 24px var(--shadow);
+            border-color: var(--accent);
+        }
+
+        .note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .note-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .note-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.4rem;
+            border-radius: 8px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+        }
+
+        .note-btn:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .note-btn.delete:hover {
+            background: var(--delete);
+            color: white;
+        }
+
+        .note-content {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .note-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .note-category {
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .category-personal {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--delete);
+        }
+
+        .category-work {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--accent);
+        }
+
+        .category-ideas {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .note-date {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .close-btn:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 150px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .app {
+                padding: 1rem;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+
+            .header-actions {
+                flex-direction: column;
+            }
+
+            .search-box input {
+                width: 100%;
+            }
+
+            .notes-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <div class="header-left">
+                <h1>
+                    <i data-lucide="notebook-pen"></i>
+                    My Notes
+                </h1>
+            </div>
+            <div class="header-actions">
+                <div class="search-box">
+                    <i class="search-icon" data-lucide="search" size="18"></i>
+                    <input type="text" placeholder="Search notes..." id="searchInput">
+                </div>
+                <button class="btn btn-primary" onclick="openModal()">
+                    <i data-lucide="plus" size="18"></i>
+                    New Note
+                </button>
+                <button class="btn-icon" onclick="toggleTheme()">
+                    <i data-lucide="moon" size="20"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">
+                <i data-lucide="layout-grid" size="16"></i>
+                All Notes
+            </button>
+            <button class="filter-btn" data-filter="personal">
+                <i data-lucide="user" size="16"></i>
+                Personal
+            </button>
+            <button class="filter-btn" data-filter="work">
+                <i data-lucide="briefcase" size="16"></i>
+                Work
+            </button>
+            <button class="filter-btn" data-filter="ideas">
+                <i data-lucide="lightbulb" size="16"></i>
+                Ideas
+            </button>
+        </div>
+
+        <div class="notes-grid" id="notesGrid">
+            <!-- Notes will be inserted here -->
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="noteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>
+                    <i data-lucide="edit-3"></i>
+                    <span id="modalTitle">Create Note</span>
+                </h2>
+                <button class="close-btn" onclick="closeModal()">
+                    <i data-lucide="x" size="24"></i>
+                </button>
+            </div>
+
+            <form id="noteForm">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="noteTitle" placeholder="Enter note title..." required>
+                </div>
+
+                <div class="form-group">
+                    <label>Content</label>
+                    <textarea id="noteContent" placeholder="Write your note here..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="noteCategory">
+                        <option value="personal">Personal</option>
+                        <option value="work">Work</option>
+                        <option value="ideas">Ideas</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i data-lucide="save" size="18"></i>
+                    Save Note
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        let notes = [
+            {
+                id: 1,
+                title: "Project Ideas",
+                content: "Build a minimal blog with clean design. Focus on typography and whitespace. Use Lucide icons for visual elements.",
+                category: "ideas",
+                date: "2025-10-10"
+            },
+            {
+                id: 2,
+                title: "Meeting Notes",
+                content: "Discussed new design system implementation. Need to finalize color palette and component library by next week.",
+                category: "work",
+                date: "2025-10-09"
+            },
+            {
+                id: 3,
+                title: "Book to Read",
+                content: "Atomic Habits by James Clear. Focus on building better habits and breaking bad ones through small changes.",
+                category: "personal",
+                date: "2025-10-08"
+            }
+        ];
+
+        let editingId = null;
+
+        function renderNotes(filter = 'all', search = '') {
+            const grid = document.getElementById('notesGrid');
+            let filteredNotes = notes;
+
+            if (filter !== 'all') {
+                filteredNotes = notes.filter(n => n.category === filter);
+            }
+
+            if (search) {
+                filteredNotes = filteredNotes.filter(n => 
+                    n.title.toLowerCase().includes(search.toLowerCase()) ||
+                    n.content.toLowerCase().includes(search.toLowerCase())
+                );
+            }
+
+            if (filteredNotes.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <i data-lucide="inbox" size="64"></i>
+                        <h3>No notes found</h3>
+                        <p>Create your first note to get started</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            grid.innerHTML = filteredNotes.map(note => `
+                <div class="note-card" onclick="viewNote(${note.id})">
+                    <div class="note-header">
+                        <div style="flex: 1;">
+                            <div class="note-title">${note.title}</div>
+                        </div>
+                        <div class="note-actions">
+                            <button class="note-btn" onclick="event.stopPropagation(); editNote(${note.id})">
+                                <i data-lucide="edit-2" size="16"></i>
+                            </button>
+                            <button class="note-btn delete" onclick="event.stopPropagation(); deleteNote(${note.id})">
+                                <i data-lucide="trash-2" size="16"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="note-content">${note.content}</div>
+                    <div class="note-footer">
+                        <span class="note-category category-${note.category}">
+                            <i data-lucide="${getCategoryIcon(note.category)}" size="12"></i>
+                            ${note.category}
+                        </span>
+                        <span class="note-date">
+                            <i data-lucide="calendar" size="12"></i>
+                            ${formatDate(note.date)}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        function getCategoryIcon(category) {
+            const icons = {
+                personal: 'user',
+                work: 'briefcase',
+                ideas: 'lightbulb'
+            };
+            return icons[category] || 'tag';
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function openModal(isEdit = false) {
+            document.getElementById('noteModal').classList.add('active');
+            document.getElementById('modalTitle').textContent = isEdit ? 'Edit Note' : 'Create Note';
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            document.getElementById('noteModal').classList.remove('active');
+            document.getElementById('noteForm').reset();
+            editingId = null;
+        }
+
+        function editNote(id) {
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                editingId = id;
+                document.getElementById('noteTitle').value = note.title;
+                document.getElementById('noteContent').value = note.content;
+                document.getElementById('noteCategory').value = note.category;
+                openModal(true);
+            }
+        }
+
+        function deleteNote(id) {
+            if (confirm('Are you sure you want to delete this note?')) {
+                notes = notes.filter(n => n.id !== id);
+                renderNotes();
+            }
+        }
+
+        function viewNote(id) {
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                alert(`${note.title}\n\n${note.content}`);
+            }
+        }
+
+        document.getElementById('noteForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+            const category = document.getElementById('noteCategory').value;
+
+            if (editingId) {
+                const note = notes.find(n => n.id === editingId);
+                if (note) {
+                    note.title = title;
+                    note.content = content;
+                    note.category = category;
+                }
+            } else {notes.unshift({
+                    id: Date.now(),
+                    title,
+                    content,
+                    category,
+                    date: new Date().toISOString().split('T')[0]
+                });
+            }
+
+            closeModal();
+            renderNotes();
+        });
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderNotes(btn.dataset.filter);
+            });
+        });
+
+        // Search
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const activeFilter = document.querySelector('.filter-btn.active').dataset.filter;
+            renderNotes(activeFilter, e.target.value);
+        });
+
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        // Close modal on outside click
+        document.getElementById('noteModal').addEventListener('click', (e) => {
+            if (e.target.id === 'noteModal') {
+                closeModal();
+            }
+        });
+
+        // Initial render
+        renderNotes();
+    </script>
+</body>
+</html>
