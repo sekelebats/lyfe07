@@ -11,36 +11,6 @@
       box-sizing: border-box;
     }
 
-/* Tambahan di bagian bawah style, sebelum </style> */
-@media (max-width: 450px) {
-  .dashboard {
-    padding: 1.5rem 1.2rem;
-    border-radius: 2rem;
-  }
-  .search-box {
-    gap: 0.3rem;
-  }
-  .search-box input {
-    padding: 0.8rem 1rem;
-    font-size: 0.9rem;
-  }
-  .search-box button {
-    padding: 0.8rem 1rem;          /* padding lebih kecil */
-    font-size: 0;                  /* sembunyikan teks */
-    min-width: 44px;               /* lebar minimum untuk tap target */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .search-box button span {
-    font-size: 1.2rem;             /* tampilkan ikon saja */
-    margin: 0;
-  }
-  .search-box button::after {
-    content: '';                   /* pastikan tidak ada teks tambahan */
-  }
-
-
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       min-height: 100vh;
@@ -92,7 +62,7 @@
 
     .dashboard {
       width: 100%;
-      max-width: 520px;
+      max-width: 540px;
       background: rgba(255, 255, 255, 0.15);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
@@ -110,7 +80,39 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.8rem;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .location {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .geo-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .geo-btn:hover {
+      background: rgba(255,255,255,0.4);
+    }
+    .geo-btn.loading-loc {
+      opacity: 0.6;
+      pointer-events: none;
     }
     .unit-toggle {
       background: rgba(255,255,255,0.2);
@@ -125,6 +127,12 @@
     }
     .unit-toggle:hover {
       background: rgba(255,255,255,0.4);
+    }
+
+    .date-time {
+      font-size: 0.9rem;
+      opacity: 0.85;
+      margin-bottom: 1.5rem;
     }
 
     .search-box {
@@ -143,6 +151,7 @@
       outline: none;
       transition: 0.3s;
       border: 1px solid transparent;
+      min-width: 0;
     }
     .search-box input::placeholder {
       color: rgba(255,255,255,0.7);
@@ -163,23 +172,10 @@
       display: flex;
       align-items: center;
       gap: 0.3rem;
+      white-space: nowrap;
     }
     .search-box button:hover {
       background: white;
-    }
-
-    .location {
-      font-size: 1.6rem;
-      font-weight: 700;
-      margin-bottom: 0.2rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .date-time {
-      font-size: 0.9rem;
-      opacity: 0.85;
-      margin-bottom: 1.8rem;
     }
 
     .weather-main {
@@ -205,22 +201,20 @@
     }
 
     .details {
-      display: flex;
-      gap: 1.2rem;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
       margin-bottom: 2rem;
     }
     .detail-item {
       background: rgba(255,255,255,0.15);
       border-radius: 1.5rem;
-      padding: 0.8rem 1.2rem;
+      padding: 0.8rem 1rem;
       display: flex;
       align-items: center;
-      gap: 0.7rem;
-      font-size: 0.95rem;
+      gap: 0.6rem;
+      font-size: 0.9rem;
       backdrop-filter: blur(5px);
-      flex: 1;
-      min-width: 100px;
     }
 
     .forecast {
@@ -296,9 +290,61 @@
       pointer-events: none;
     }
 
-    @media (max-width: 400px) {
+    /* ---------- RESPONSIVE ---------- */
+    @media (max-width: 480px) {
+      body {
+        padding: 0.8rem;
+      }
+      .dashboard {
+        padding: 1.5rem 1.2rem;
+        border-radius: 2rem;
+      }
+      .location {
+        font-size: 1.3rem;
+      }
       .temperature {
-        font-size: 3.8rem;
+        font-size: 3.5rem;
+      }
+      .weather-icon {
+        font-size: 3.5rem;
+      }
+      .details {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+      }
+      .detail-item {
+        padding: 0.7rem 0.8rem;
+        font-size: 0.8rem;
+      }
+      .search-box {
+        gap: 0.3rem;
+      }
+      .search-box input {
+        padding: 0.8rem 1rem;
+        font-size: 0.9rem;
+      }
+      .search-box button {
+        padding: 0.8rem 0.9rem;
+        font-size: 0;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .search-box button span {
+        font-size: 1.2rem;
+        margin: 0;
+      }
+      .forecast-day {
+        min-width: 65px;
+        padding: 0.7rem 0.4rem;
+        font-size: 0.75rem;
+      }
+    }
+
+    @media (max-width: 350px) {
+      .details {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -306,7 +352,10 @@
 <body class="sunny">
   <div class="dashboard" id="dashboard">
     <div class="header">
-      <div class="location" id="locationName">Tangerang</div>
+      <div class="header-left">
+        <div class="location" id="locationName">Tangerang</div>
+        <button class="geo-btn" id="geoBtn" title="Gunakan lokasi saya">📍</button>
+      </div>
       <button class="unit-toggle" id="unitToggle" title="Ganti satuan">°C / °F</button>
     </div>
     <div class="date-time" id="dateTime">Memuat...</div>
@@ -331,6 +380,14 @@
         <span>📊</span>
         <span id="tempRange">H: --° / L: --°</span>
       </div>
+      <div class="detail-item">
+        <span>💧</span>
+        <span id="humidity">-- %</span>
+      </div>
+      <div class="detail-item">
+        <span>🌅</span>
+        <span id="sunrise">--:--</span>
+      </div>
     </div>
 
     <div class="forecast" id="forecastContainer">
@@ -345,15 +402,15 @@
   <script>
     (function() {
       // ---------- STATE ----------
-      const DEFAULT_LAT = -6.1781;   // Tangerang
+      const DEFAULT_LAT = -6.1781;
       const DEFAULT_LON = 106.6300;
       const DEFAULT_NAME = "Tangerang";
 
       let currentLat = DEFAULT_LAT;
       let currentLon = DEFAULT_LON;
       let currentCity = DEFAULT_NAME;
-      let isCelsius = true; // default Celsius
-      let weatherData = null; // simpan data mentah
+      let isCelsius = true;
+      let weatherData = null;
 
       // DOM elements
       const body = document.body;
@@ -362,27 +419,29 @@
       const dateTimeEl = document.getElementById('dateTime');
       const cityInput = document.getElementById('cityInput');
       const searchBtn = document.getElementById('searchBtn');
+      const geoBtn = document.getElementById('geoBtn');
       const unitToggle = document.getElementById('unitToggle');
       const currentTempEl = document.getElementById('currentTemp');
       const weatherIconEl = document.getElementById('weatherIcon');
       const conditionTextEl = document.getElementById('conditionText');
       const windSpeedEl = document.getElementById('windSpeed');
       const tempRangeEl = document.getElementById('tempRange');
+      const humidityEl = document.getElementById('humidity');
+      const sunriseEl = document.getElementById('sunrise');
       const forecastContainer = document.getElementById('forecastContainer');
       const favoritesContainer = document.getElementById('favoritesContainer');
 
       // ---------- UTILS ----------
       function getWeatherEmoji(code) {
-        // WMO Weather interpretation codes
-        if (code === 0) return '☀️';               // Clear sky
-        if (code >= 1 && code <= 3) return '⛅';    // Partly cloudy
-        if (code >= 45 && code <= 48) return '🌫️';  // Fog
-        if (code >= 51 && code <= 55) return '🌦️';  // Drizzle
-        if (code >= 61 && code <= 65) return '🌧️';  // Rain
-        if (code >= 71 && code <= 77) return '❄️';  // Snow
-        if (code >= 80 && code <= 82) return '🌦️';  // Rain showers
-        if (code >= 95 && code <= 99) return '⛈️';  // Thunderstorm
-        return '🌈'; // default
+        if (code === 0) return '☀️';
+        if (code >= 1 && code <= 3) return '⛅';
+        if (code >= 45 && code <= 48) return '🌫️';
+        if (code >= 51 && code <= 55) return '🌦️';
+        if (code >= 61 && code <= 65) return '🌧️';
+        if (code >= 71 && code <= 77) return '❄️';
+        if (code >= 80 && code <= 82) return '🌦️';
+        if (code >= 95 && code <= 99) return '⛈️';
+        return '🌈';
       }
 
       function getConditionText(code) {
@@ -404,7 +463,7 @@
         if (code >= 51 && code <= 65) return 'rainy';
         if (code >= 80 && code <= 82) return 'rainy';
         if (code >= 95 && code <= 99) return 'stormy';
-        return 'sunny'; // fallback
+        return 'sunny';
       }
 
       function formatTemp(celsius) {
@@ -422,6 +481,12 @@
         return days[d.getDay()];
       }
 
+      function formatTime(isoString) {
+        // Open-Meteo sunrise/sunset dalam format ISO, ambil jam:menit
+        const d = new Date(isoString);
+        return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      }
+
       function updateDateTime() {
         const now = new Date();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -432,7 +497,7 @@
       async function geocodeCity(cityName) {
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1&accept-language=id`;
         const res = await fetch(url, {
-          headers: { 'User-Agent': 'WeatherDashboardApp/1.0 (your-email@example.com)' }
+          headers: { 'User-Agent': 'WeatherDashboardApp/1.0' }
         });
         if (!res.ok) throw new Error('Geocoding gagal');
         const data = await res.json();
@@ -440,12 +505,22 @@
         return {
           lat: parseFloat(data[0].lat),
           lon: parseFloat(data[0].lon),
-          name: data[0].display_name.split(',')[0] // ambil nama singkat
+          name: data[0].display_name.split(',')[0]
         };
       }
 
+      async function reverseGeocode(lat, lon) {
+        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=id`;
+        const res = await fetch(url, {
+          headers: { 'User-Agent': 'WeatherDashboardApp/1.0' }
+        });
+        if (!res.ok) return 'Lokasi Saya';
+        const data = await res.json();
+        return data.address?.city || data.address?.town || data.address?.village || data.display_name?.split(',')[0] || 'Lokasi Saya';
+      }
+
       async function fetchWeather(lat, lon) {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia/Jakarta`;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode,sunrise,sunset&hourly=relativehumidity_2m&timezone=Asia/Jakarta&forecast_days=7`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Gagal mengambil data cuaca');
         return await res.json();
@@ -460,6 +535,7 @@
 
         const current = data.current_weather;
         const daily = data.daily;
+        const hourly = data.hourly;
         const weatherCode = current.weathercode;
 
         // Current weather
@@ -467,6 +543,22 @@
         weatherIconEl.textContent = getWeatherEmoji(weatherCode);
         conditionTextEl.textContent = getConditionText(weatherCode);
         windSpeedEl.textContent = formatWind(current.windspeed);
+
+        // Humidity (ambil jam sekarang dari hourly)
+        if (hourly && hourly.time && hourly.relativehumidity_2m) {
+          const now = new Date();
+          const currentHour = now.getHours();
+          // Cari index yang paling dekat dengan jam sekarang
+          const hourStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T${String(currentHour).padStart(2,'0')}:00`;
+          const idx = hourly.time.findIndex(t => t === hourStr);
+          if (idx >= 0) {
+            humidityEl.textContent = `${hourly.relativehumidity_2m[idx]} %`;
+          } else {
+            humidityEl.textContent = `${hourly.relativehumidity_2m[0]} %`;
+          }
+        } else {
+          humidityEl.textContent = '-- %';
+        }
 
         // Temp range from daily (today)
         if (daily && daily.temperature_2m_max && daily.temperature_2m_min) {
@@ -477,6 +569,13 @@
           tempRangeEl.textContent = '--';
         }
 
+        // Sunrise / Sunset
+        if (daily && daily.sunrise && daily.sunset) {
+          sunriseEl.textContent = `${formatTime(daily.sunrise[0])} / ${formatTime(daily.sunset[0])}`;
+        } else {
+          sunriseEl.textContent = '--:--';
+        }
+
         // Background
         body.className = getBackgroundClass(weatherCode);
 
@@ -484,7 +583,7 @@
         forecastContainer.innerHTML = '';
         if (daily && daily.time) {
           daily.time.forEach((date, i) => {
-            if (i === 0) return; // skip today, sudah ditampilkan di main
+            if (i === 0) return;
             const dayDiv = document.createElement('div');
             dayDiv.className = 'forecast-day';
             dayDiv.innerHTML = `
@@ -496,7 +595,7 @@
           });
         }
 
-        // Simpan ke localStorage last city
+        // Simpan ke localStorage
         localStorage.setItem('lastCity', JSON.stringify({ name: cityName, lat: currentLat, lon: currentLon }));
         renderFavorites();
       }
@@ -506,7 +605,7 @@
         dashboard.classList.remove('loading');
       }
 
-      // ---------- FAVORITES (localStorage) ----------
+      // ---------- FAVORITES ----------
       function getFavorites() {
         try {
           return JSON.parse(localStorage.getItem('favCities') || '[]');
@@ -550,7 +649,7 @@
         });
       }
 
-      // ---------- LOAD CITY ----------
+     // ---------- LOAD CITY ----------
       async function loadCity(cityName, lat, lon) {
         dashboard.classList.add('loading');
         try {
@@ -585,9 +684,30 @@
         }
       }
 
+      async function detectLocation() {
+        if (!navigator.geolocation) {
+          alert('Geolokasi tidak didukung browser Anda.');
+          return;
+        }
+        geoBtn.classList.add('loading-loc');
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+          });
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          const cityName = await reverseGeocode(lat, lon);
+          await loadCity(cityName, lat, lon);
+          addFavorite(cityName, lat, lon);
+        } catch (err) {
+          alert('Gagal mendeteksi lokasi: ' + err.message);
+        } finally {
+          geoBtn.classList.remove('loading-loc');
+        }
+      }
+
       // ---------- INIT ----------
       async function init() {
-        // Cek last city
         const lastCityStr = localStorage.getItem('lastCity');
         let startLat = DEFAULT_LAT, startLon = DEFAULT_LON, startName = DEFAULT_NAME;
         if (lastCityStr) {
@@ -599,10 +719,8 @@
           } catch(e) {}
         }
 
-        // Load default city
         await loadCity(startName, startLat, startLon);
 
-        // Unit toggle
         unitToggle.addEventListener('click', () => {
           isCelsius = !isCelsius;
           unitToggle.textContent = isCelsius ? '°C / °F' : '°F / °C';
@@ -610,13 +728,13 @@
           if (weatherData) renderAll(weatherData, currentCity);
         });
 
-        // Search
         searchBtn.addEventListener('click', searchCity);
         cityInput.addEventListener('keypress', (e) => {
           if (e.key === 'Enter') searchCity();
         });
 
-        // Load unit preference
+        geoBtn.addEventListener('click', detectLocation);
+
         const savedUnit = localStorage.getItem('unitPref');
         if (savedUnit === 'F') {
           isCelsius = false;
