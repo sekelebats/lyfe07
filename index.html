@@ -1,724 +1,604 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Notes</title>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Weather Dashboard • Tangerang</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        :root {
-            --bg: #fafafa;
-            --bg-card: #ffffff;
-            --text: #1a1a1a;
-            --text-secondary: #666666;
-            --border: #e0e0e0;
-            --accent: #667eea;
-            --accent-hover: #5568d3;
-            --shadow: rgba(0,0,0,0.08);
-            --delete: #ef4444;
-            --warning: #f59e0b;
-            --success: #10b981;
-        }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      background-attachment: fixed;
+      transition: background 0.8s ease;
+      padding: 1.5rem;
+    }
 
-        [data-theme="dark"] {
-            --bg: #0f0f0f;
-            --bg-card: #1a1a1a;
-            --text: #ffffff;
-            --text-secondary: #a0a0a0;
-            --border: #2a2a2a;
-            --shadow: rgba(0,0,0,0.3);
-        }
+    /* Dynamic backgrounds */
+    body.sunny {
+      background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+    }
+    body.cloudy {
+      background: linear-gradient(135deg, #bdc3c7 0%, #2c3e50 100%);
+    }
+    body.rainy {
+      background: linear-gradient(135deg, #3a6073 0%, #16222a 100%);
+      position: relative;
+      overflow-x: hidden;
+    }
+    body.rainy::before {
+      content: '';
+      position: fixed;
+      top: -10%;
+      left: 0;
+      width: 100%;
+      height: 120%;
+      background: repeating-linear-gradient(transparent, transparent 2px, rgba(255,255,255,0.08) 2px, rgba(255,255,255,0.08) 6px);
+      animation: rain 0.5s linear infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    @keyframes rain {
+      0% { transform: translateY(-20px); }
+      100% { transform: translateY(20px); }
+    }
+    body.stormy {
+      background: linear-gradient(135deg, #1f1c2c 0%, #928dab 100%);
+      animation: stormFlash 2s infinite;
+    }
+    @keyframes stormFlash {
+      0%, 90%, 100% { opacity: 1; }
+      95% { opacity: 0.7; }
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            transition: all 0.3s;
-        }
+    .dashboard {
+      width: 100%;
+      max-width: 520px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 2.5rem;
+      padding: 2rem 1.8rem;
+      box-shadow: 0 30px 50px rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      position: relative;
+      z-index: 2;
+      transition: all 0.3s ease;
+    }
 
-        .app {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.8rem;
+    }
+    .unit-toggle {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 0.9rem;
+    }
+    .unit-toggle:hover {
+      background: rgba(255,255,255,0.4);
+    }
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
+    .search-box {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+    .search-box input {
+      flex: 1;
+      padding: 0.9rem 1.2rem;
+      border-radius: 2rem;
+      border: none;
+      background: rgba(255,255,255,0.25);
+      color: white;
+      font-size: 1rem;
+      outline: none;
+      transition: 0.3s;
+      border: 1px solid transparent;
+    }
+    .search-box input::placeholder {
+      color: rgba(255,255,255,0.7);
+    }
+    .search-box input:focus {
+      background: rgba(255,255,255,0.4);
+      border-color: rgba(255,255,255,0.6);
+    }
+    .search-box button {
+      padding: 0.9rem 1.5rem;
+      border-radius: 2rem;
+      border: none;
+      background: rgba(255,255,255,0.9);
+      color: #1e3c72;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .search-box button:hover {
+      background: white;
+    }
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
+    .location {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .date-time {
+      font-size: 0.9rem;
+      opacity: 0.85;
+      margin-bottom: 1.8rem;
+    }
 
-        h1 {
-            font-size: 2rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
+    .weather-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.8rem;
+    }
+    .temperature {
+      font-size: 5rem;
+      font-weight: 300;
+      line-height: 1;
+    }
+    .weather-icon {
+      font-size: 5rem;
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,0.3));
+    }
+    .condition-text {
+      font-size: 1.2rem;
+      text-transform: capitalize;
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.5px;
+    }
 
-        .header-actions {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
+    .details {
+      display: flex;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+    .detail-item {
+      background: rgba(255,255,255,0.15);
+      border-radius: 1.5rem;
+      padding: 0.8rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      font-size: 0.95rem;
+      backdrop-filter: blur(5px);
+      flex: 1;
+      min-width: 100px;
+    }
 
-        .search-box {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
+    .forecast {
+      display: flex;
+      gap: 0.8rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.3) transparent;
+    }
+    .forecast::-webkit-scrollbar {
+      height: 5px;
+    }
+    .forecast::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.3);
+      border-radius: 10px;
+    }
+    .forecast-day {
+      min-width: 75px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 2rem;
+      padding: 0.9rem 0.5rem;
+      text-align: center;
+      backdrop-filter: blur(5px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+    }
+    .forecast-day .day-name {
+      font-weight: bold;
+      opacity: 0.9;
+    }
+    .forecast-icon {
+      font-size: 2rem;
+    }
+    .temp-range {
+      font-weight: 600;
+    }
 
-        .search-box input {
-            padding: 0.7rem 1rem 0.7rem 2.8rem;
-            border: 2px solid var(--border);
-            border-radius: 50px;
-            background: var(--bg-card);
-            color: var(--text);
-            font-size: 0.95rem;
-            width: 250px;
-            transition: all 0.3s;
-        }
+    .favorites {
+      margin-top: 1.2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .fav-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      padding: 0.4rem 1rem;
+      border-radius: 2rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: 0.2s;
+    }
+    .fav-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    .fav-btn .remove-fav {
+      margin-left: 0.3rem;
+      opacity: 0.7;
+      font-weight: bold;
+      cursor: pointer;
+    }
 
-        .search-box input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
 
-        .search-icon {
-            position: absolute;
-            left: 1rem;
-            color: var(--text-secondary);
-        }
-
-        .btn {
-            padding: 0.7rem 1.5rem;
-            border: none;
-            border-radius: 50px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: all 0.3s;
-            font-size: 0.95rem;
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-icon {
-            background: var(--bg-card);
-            color: var(--text);
-            border: 2px solid var(--border);
-            padding: 0.7rem;
-            border-radius: 50%;
-        }
-
-        .btn-icon:hover {
-            background: var(--accent);
-            color: white;
-            border-color: var(--accent);
-        }
-
-        .filters {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            padding: 0.6rem 1.2rem;
-            border: 2px solid var(--border);
-            background: var(--bg-card);
-            color: var(--text-secondary);
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .filter-btn:hover,
-        .filter-btn.active {
-            background: var(--accent);
-            color: white;
-            border-color: var(--accent);
-        }
-
-        .notes-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .note-card {
-            background: var(--bg-card);
-            border: 2px solid var(--border);
-            border-radius: 16px;
-            padding: 1.5rem;
-            transition: all 0.3s;
-            position: relative;
-            cursor: pointer;
-        }
-
-        .note-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 24px var(--shadow);
-            border-color: var(--accent);
-        }
-
-        .note-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 1rem;
-        }
-
-        .note-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--text);
-            margin-bottom: 0.5rem;
-        }
-
-        .note-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .note-btn {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            padding: 0.4rem;
-            border-radius: 8px;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-        }
-
-        .note-btn:hover {
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        .note-btn.delete:hover {
-            background: var(--delete);
-            color: white;
-        }
-
-        .note-content {
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: 1rem;
-            display: -webkit-box;
-            -webkit-line-clamp: 4;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .note-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border);
-        }
-
-        .note-category {
-            padding: 0.4rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .category-personal {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--delete);
-        }
-
-        .category-work {
-            background: rgba(102, 126, 234, 0.1);
-            color: var(--accent);
-        }
-
-        .category-ideas {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--warning);
-        }
-
-        .note-date {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(5px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: var(--bg-card);
-            border-radius: 20px;
-            padding: 2rem;
-            max-width: 600px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: slideUp 0.3s ease-out;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .modal-header h2 {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-
-        .close-btn:hover {
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            background: var(--bg);
-            color: var(--text);
-            font-family: inherit;
-            font-size: 1rem;
-            transition: all 0.3s;
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 150px;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--text-secondary);
-        }
-
-        .empty-state i {
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-
-        @media (max-width: 768px) {
-            .app {
-                padding: 1rem;
-            }
-
-            header {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: stretch;
-            }
-
-            .header-actions {
-                flex-direction: column;
-            }
-
-            .search-box input {
-                width: 100%;
-            }
-
-            .notes-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    @media (max-width: 400px) {
+      .temperature {
+        font-size: 3.8rem;
+      }
+    }
+  </style>
 </head>
-<body>
-    <div class="app">
-        <header>
-            <div class="header-left">
-                <h1>
-                    <i data-lucide="notebook-pen"></i>
-                    My Notes
-                </h1>
-            </div>
-            <div class="header-actions">
-                <div class="search-box">
-                    <i class="search-icon" data-lucide="search" size="18"></i>
-                    <input type="text" placeholder="Search notes..." id="searchInput">
-                </div>
-                <button class="btn btn-primary" onclick="openModal()">
-                    <i data-lucide="plus" size="18"></i>
-                    New Note
-                </button>
-                <button class="btn-icon" onclick="toggleTheme()">
-                    <i data-lucide="moon" size="20"></i>
-                </button>
-            </div>
-        </header>
+<body class="sunny">
+  <div class="dashboard" id="dashboard">
+    <div class="header">
+      <div class="location" id="locationName">Tangerang</div>
+      <button class="unit-toggle" id="unitToggle" title="Ganti satuan">°C / °F</button>
+    </div>
+    <div class="date-time" id="dateTime">Memuat...</div>
 
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">
-                <i data-lucide="layout-grid" size="16"></i>
-                All Notes
-            </button>
-            <button class="filter-btn" data-filter="personal">
-                <i data-lucide="user" size="16"></i>
-                Personal
-            </button>
-            <button class="filter-btn" data-filter="work">
-                <i data-lucide="briefcase" size="16"></i>
-                Work
-            </button>
-            <button class="filter-btn" data-filter="ideas">
-                <i data-lucide="lightbulb" size="16"></i>
-                Ideas
-            </button>
-        </div>
-
-        <div class="notes-grid" id="notesGrid">
-            <!-- Notes will be inserted here -->
-        </div>
+    <div class="search-box">
+      <input type="text" id="cityInput" placeholder="Cari kota..." autocomplete="off">
+      <button id="searchBtn"><span>&#128269;</span> Cari</button>
     </div>
 
-    <!-- Modal -->
-    <div class="modal" id="noteModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>
-                    <i data-lucide="edit-3"></i>
-                    <span id="modalTitle">Create Note</span>
-                </h2>
-                <button class="close-btn" onclick="closeModal()">
-                    <i data-lucide="x" size="24"></i>
-                </button>
-            </div>
+    <div class="weather-main">
+      <div class="temperature" id="currentTemp">--°</div>
+      <div class="weather-icon" id="weatherIcon">☀️</div>
+    </div>
+    <div class="condition-text" id="conditionText">Cerah</div>
 
-            <form id="noteForm">
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="noteTitle" placeholder="Enter note title..." required>
-                </div>
-
-                <div class="form-group">
-                    <label>Content</label>
-                    <textarea id="noteContent" placeholder="Write your note here..." required></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Category</label>
-                    <select id="noteCategory">
-                        <option value="personal">Personal</option>
-                        <option value="work">Work</option>
-                        <option value="ideas">Ideas</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%;">
-                    <i data-lucide="save" size="18"></i>
-                    Save Note
-                </button>
-            </form>
-        </div>
+    <div class="details">
+      <div class="detail-item">
+        <span>🌬️</span>
+        <span id="windSpeed">-- km/j</span>
+      </div>
+      <div class="detail-item">
+        <span>📊</span>
+        <span id="tempRange">H: --° / L: --°</span>
+      </div>
     </div>
 
-    <script>
-        lucide.createIcons();
+    <div class="forecast" id="forecastContainer">
+      <!-- diisi JS -->
+    </div>
 
-        let notes = [
-            {
-                id: 1,
-                title: "Project Ideas",
-                content: "Build a minimal blog with clean design. Focus on typography and whitespace. Use Lucide icons for visual elements.",
-                category: "ideas",
-                date: "2025-10-10"
-            },
-            {
-                id: 2,
-                title: "Meeting Notes",
-                content: "Discussed new design system implementation. Need to finalize color palette and component library by next week.",
-                category: "work",
-                date: "2025-10-09"
-            },
-            {
-                id: 3,
-                title: "Book to Read",
-                content: "Atomic Habits by James Clear. Focus on building better habits and breaking bad ones through small changes.",
-                category: "personal",
-                date: "2025-10-08"
-            }
-        ];
+    <div class="favorites" id="favoritesContainer">
+      <!-- kota favorit -->
+    </div>
+  </div>
 
-        let editingId = null;
+  <script>
+    (function() {
+      // ---------- STATE ----------
+      const DEFAULT_LAT = -6.1781;   // Tangerang
+      const DEFAULT_LON = 106.6300;
+      const DEFAULT_NAME = "Tangerang";
 
-        function renderNotes(filter = 'all', search = '') {
-            const grid = document.getElementById('notesGrid');
-            let filteredNotes = notes;
+      let currentLat = DEFAULT_LAT;
+      let currentLon = DEFAULT_LON;
+      let currentCity = DEFAULT_NAME;
+      let isCelsius = true; // default Celsius
+      let weatherData = null; // simpan data mentah
 
-            if (filter !== 'all') {
-                filteredNotes = notes.filter(n => n.category === filter);
-            }
+      // DOM elements
+      const body = document.body;
+      const dashboard = document.getElementById('dashboard');
+      const locationEl = document.getElementById('locationName');
+      const dateTimeEl = document.getElementById('dateTime');
+      const cityInput = document.getElementById('cityInput');
+      const searchBtn = document.getElementById('searchBtn');
+      const unitToggle = document.getElementById('unitToggle');
+      const currentTempEl = document.getElementById('currentTemp');
+      const weatherIconEl = document.getElementById('weatherIcon');
+      const conditionTextEl = document.getElementById('conditionText');
+      const windSpeedEl = document.getElementById('windSpeed');
+      const tempRangeEl = document.getElementById('tempRange');
+      const forecastContainer = document.getElementById('forecastContainer');
+      const favoritesContainer = document.getElementById('favoritesContainer');
 
-            if (search) {
-                filteredNotes = filteredNotes.filter(n => 
-                    n.title.toLowerCase().includes(search.toLowerCase()) ||
-                    n.content.toLowerCase().includes(search.toLowerCase())
-                );
-            }
+      // ---------- UTILS ----------
+      function getWeatherEmoji(code) {
+        // WMO Weather interpretation codes
+        if (code === 0) return '☀️';               // Clear sky
+        if (code >= 1 && code <= 3) return '⛅';    // Partly cloudy
+        if (code >= 45 && code <= 48) return '🌫️';  // Fog
+        if (code >= 51 && code <= 55) return '🌦️';  // Drizzle
+        if (code >= 61 && code <= 65) return '🌧️';  // Rain
+        if (code >= 71 && code <= 77) return '❄️';  // Snow
+        if (code >= 80 && code <= 82) return '🌦️';  // Rain showers
+        if (code >= 95 && code <= 99) return '⛈️';  // Thunderstorm
+        return '🌈'; // default
+      }
 
-            if (filteredNotes.length === 0) {
-                grid.innerHTML = `
-                    <div class="empty-state" style="grid-column: 1/-1;">
-                        <i data-lucide="inbox" size="64"></i>
-                        <h3>No notes found</h3>
-                        <p>Create your first note to get started</p>
-                    </div>
-                `;
-                lucide.createIcons();
-                return;
-            }
+      function getConditionText(code) {
+        if (code === 0) return 'Cerah';
+        if (code >= 1 && code <= 3) return 'Berawan';
+        if (code >= 45 && code <= 48) return 'Berkabut';
+        if (code >= 51 && code <= 55) return 'Gerimis';
+        if (code >= 61 && code <= 65) return 'Hujan';
+        if (code >= 71 && code <= 77) return 'Salju';
+        if (code >= 80 && code <= 82) return 'Hujan Lebat';
+        if (code >= 95 && code <= 99) return 'Badai Petir';
+        return 'Tidak diketahui';
+      }
 
-            grid.innerHTML = filteredNotes.map(note => `
-                <div class="note-card" onclick="viewNote(${note.id})">
-                    <div class="note-header">
-                        <div style="flex: 1;">
-                            <div class="note-title">${note.title}</div>
-                        </div>
-                        <div class="note-actions">
-                            <button class="note-btn" onclick="event.stopPropagation(); editNote(${note.id})">
-                                <i data-lucide="edit-2" size="16"></i>
-                            </button>
-                            <button class="note-btn delete" onclick="event.stopPropagation(); deleteNote(${note.id})">
-                                <i data-lucide="trash-2" size="16"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="note-content">${note.content}</div>
-                    <div class="note-footer">
-                        <span class="note-category category-${note.category}">
-                            <i data-lucide="${getCategoryIcon(note.category)}" size="12"></i>
-                            ${note.category}
-                        </span>
-                        <span class="note-date">
-                            <i data-lucide="calendar" size="12"></i>
-                            ${formatDate(note.date)}
-                        </span>
-                    </div>
-                </div>
-            `).join('');
+      function getBackgroundClass(code) {
+        if (code === 0) return 'sunny';
+        if (code >= 1 && code <= 3) return 'cloudy';
+        if (code >= 45 && code <= 48) return 'cloudy';
+        if (code >= 51 && code <= 65) return 'rainy';
+        if (code >= 80 && code <= 82) return 'rainy';
+        if (code >= 95 && code <= 99) return 'stormy';
+        return 'sunny'; // fallback
+      }
 
-            lucide.createIcons();
-        }
+      function formatTemp(celsius) {
+        if (isCelsius) return `${Math.round(celsius)}°C`;
+        return `${Math.round(celsius * 9/5 + 32)}°F`;
+      }
 
-        function getCategoryIcon(category) {
-            const icons = {
-                personal: 'user',
-                work: 'briefcase',
-                ideas: 'lightbulb'
-            };
-            return icons[category] || 'tag';
-        }
+      function formatWind(kmh) {
+        return `${Math.round(kmh)} km/j`;
+      }
 
-        function formatDate(dateStr) {
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        }
+      function formatDay(dateStr) {
+        const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+        const d = new Date(dateStr);
+        return days[d.getDay()];
+      }
 
-        function openModal(isEdit = false) {
-            document.getElementById('noteModal').classList.add('active');
-            document.getElementById('modalTitle').textContent = isEdit ? 'Edit Note' : 'Create Note';
-            lucide.createIcons();
-        }
+      function updateDateTime() {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+        dateTimeEl.textContent = now.toLocaleDateString('id-ID', options);
+      }
 
-        function closeModal() {
-            document.getElementById('noteModal').classList.remove('active');
-            document.getElementById('noteForm').reset();
-            editingId = null;
-        }
-
-        function editNote(id) {
-            const note = notes.find(n => n.id === id);
-            if (note) {
-                editingId = id;
-                document.getElementById('noteTitle').value = note.title;
-                document.getElementById('noteContent').value = note.content;
-                document.getElementById('noteCategory').value = note.category;
-                openModal(true);
-            }
-        }
-
-        function deleteNote(id) {
-            if (confirm('Are you sure you want to delete this note?')) {
-                notes = notes.filter(n => n.id !== id);
-                renderNotes();
-            }
-        }
-
-        function viewNote(id) {
-            const note = notes.find(n => n.id === id);
-            if (note) {
-                alert(`${note.title}\n\n${note.content}`);
-            }
-        }
-
-        document.getElementById('noteForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const title = document.getElementById('noteTitle').value;
-            const content = document.getElementById('noteContent').value;
-            const category = document.getElementById('noteCategory').value;
-
-            if (editingId) {
-                const note = notes.find(n => n.id === editingId);
-                if (note) {
-                    note.title = title;
-                    note.content = content;
-                    note.category = category;
-                }
-            } else {notes.unshift({
-                    id: Date.now(),
-                    title,
-                    content,
-                    category,
-                    date: new Date().toISOString().split('T')[0]
-                });
-            }
-
-            closeModal();
-            renderNotes();
+      // ---------- API CALLS ----------
+      async function geocodeCity(cityName) {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1&accept-language=id`;
+        const res = await fetch(url, {
+          headers: { 'User-Agent': 'WeatherDashboardApp/1.0 (your-email@example.com)' }
         });
+        if (!res.ok) throw new Error('Geocoding gagal');
+        const data = await res.json();
+        if (!data || data.length === 0) throw new Error('Kota tidak ditemukan');
+        return {
+          lat: parseFloat(data[0].lat),
+          lon: parseFloat(data[0].lon),
+          name: data[0].display_name.split(',')[0] // ambil nama singkat
+        };
+      }
 
-        // Filter buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                renderNotes(btn.dataset.filter);
-            });
+      async function fetchWeather(lat, lon) {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Asia/Jakarta`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Gagal mengambil data cuaca');
+        return await res.json();
+      }
+
+      // ---------- RENDER ----------
+      function renderAll(data, cityName) {
+        weatherData = data;
+        currentCity = cityName;
+        locationEl.textContent = cityName;
+        updateDateTime();
+
+        const current = data.current_weather;
+        const daily = data.daily;
+        const weatherCode = current.weathercode;
+
+        // Current weather
+        currentTempEl.textContent = formatTemp(current.temperature);
+        weatherIconEl.textContent = getWeatherEmoji(weatherCode);
+        conditionTextEl.textContent = getConditionText(weatherCode);
+        windSpeedEl.textContent = formatWind(current.windspeed);
+
+        // Temp range from daily (today)
+        if (daily && daily.temperature_2m_max && daily.temperature_2m_min) {
+          const todayMax = daily.temperature_2m_max[0];
+          const todayMin = daily.temperature_2m_min[0];
+          tempRangeEl.textContent = `H: ${formatTemp(todayMax)} / L: ${formatTemp(todayMin)}`;
+        } else {
+          tempRangeEl.textContent = '--';
+        }
+
+        // Background
+        body.className = getBackgroundClass(weatherCode);
+
+        // Forecast
+        forecastContainer.innerHTML = '';
+        if (daily && daily.time) {
+          daily.time.forEach((date, i) => {
+            if (i === 0) return; // skip today, sudah ditampilkan di main
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'forecast-day';
+            dayDiv.innerHTML = `
+              <span class="day-name">${formatDay(date)}</span>
+              <span class="forecast-icon">${getWeatherEmoji(daily.weathercode[i])}</span>
+              <span class="temp-range">${formatTemp(daily.temperature_2m_max[i])} / ${formatTemp(daily.temperature_2m_min[i])}</span>
+            `;
+            forecastContainer.appendChild(dayDiv);
+          });
+        }
+
+        // Simpan ke localStorage last city
+        localStorage.setItem('lastCity', JSON.stringify({ name: cityName, lat: currentLat, lon: currentLon }));
+        renderFavorites();
+      }
+
+      function showError(msg) {
+        alert(msg);
+        dashboard.classList.remove('loading');
+      }
+
+      // ---------- FAVORITES (localStorage) ----------
+      function getFavorites() {
+        try {
+          return JSON.parse(localStorage.getItem('favCities') || '[]');
+        } catch(e) { return []; }
+      }
+
+      function saveFavorites(favs) {
+        localStorage.setItem('favCities', JSON.stringify(favs));
+      }
+
+      function addFavorite(name, lat, lon) {
+        const favs = getFavorites();
+        if (!favs.some(f => f.lat === lat && f.lon === lon)) {
+          favs.push({ name, lat, lon });
+          saveFavorites(favs);
+          renderFavorites();
+        }
+      }
+
+      function removeFavorite(lat, lon) {
+        let favs = getFavorites();
+        favs = favs.filter(f => !(f.lat === lat && f.lon === lon));
+        saveFavorites(favs);
+        renderFavorites();
+      }
+
+      function renderFavorites() {
+        const favs = getFavorites();
+        favoritesContainer.innerHTML = '';
+        if (favs.length === 0) return;
+        favs.forEach(f => {
+          const btn = document.createElement('button');
+          btn.className = 'fav-btn';
+          btn.innerHTML = `${f.name} <span class="remove-fav" data-lat="${f.lat}" data-lon="${f.lon}">&times;</span>`;
+          btn.querySelector('.remove-fav').addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeFavorite(f.lat, f.lon);
+          });
+          btn.addEventListener('click', () => loadCity(f.name, f.lat, f.lon));
+          favoritesContainer.appendChild(btn);
+        });
+      }
+
+      // ---------- LOAD CITY ----------
+      async function loadCity(cityName, lat, lon) {
+        dashboard.classList.add('loading');
+        try {
+          currentLat = lat;
+          currentLon = lon;
+          const data = await fetchWeather(lat, lon);
+          renderAll(data, cityName);
+          cityInput.value = '';
+        } catch (err) {
+          showError('Gagal memuat cuaca: ' + err.message);
+        } finally {
+          dashboard.classList.remove('loading');
+        }
+      }
+
+      async function searchCity() {
+        const query = cityInput.value.trim();
+        if (!query) return;
+        dashboard.classList.add('loading');
+        try {
+          const geo = await geocodeCity(query);
+          currentLat = geo.lat;
+          currentLon = geo.lon;
+          const data = await fetchWeather(geo.lat, geo.lon);
+          renderAll(data, geo.name);
+          addFavorite(geo.name, geo.lat, geo.lon);
+          cityInput.value = '';
+        } catch (err) {
+          showError(err.message);
+        } finally {
+          dashboard.classList.remove('loading');
+        }
+      }
+
+      // ---------- INIT ----------
+      async function init() {
+        // Cek last city
+        const lastCityStr = localStorage.getItem('lastCity');
+        let startLat = DEFAULT_LAT, startLon = DEFAULT_LON, startName = DEFAULT_NAME;
+        if (lastCityStr) {
+          try {
+            const last = JSON.parse(lastCityStr);
+            startLat = last.lat;
+            startLon = last.lon;
+            startName = last.name;
+          } catch(e) {}
+        }
+
+        // Load default city
+        await loadCity(startName, startLat, startLon);
+
+        // Unit toggle
+        unitToggle.addEventListener('click', () => {
+          isCelsius = !isCelsius;
+          unitToggle.textContent = isCelsius ? '°C / °F' : '°F / °C';
+          localStorage.setItem('unitPref', isCelsius ? 'C' : 'F');
+          if (weatherData) renderAll(weatherData, currentCity);
         });
 
         // Search
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const activeFilter = document.querySelector('.filter-btn.active').dataset.filter;
-            renderNotes(activeFilter, e.target.value);
+        searchBtn.addEventListener('click', searchCity);
+        cityInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') searchCity();
         });
 
-        // Theme toggle
-        function toggleTheme() {
-            const html = document.documentElement;
-            const current = html.getAttribute('data-theme');
-            const newTheme = current === 'dark' ? 'light' : 'dark';
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
+        // Load unit preference
+        const savedUnit = localStorage.getItem('unitPref');
+        if (savedUnit === 'F') {
+          isCelsius = false;
+          unitToggle.textContent = '°F / °C';
         }
 
-        // Load theme
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
+        renderFavorites();
+        setInterval(updateDateTime, 1000);
+      }
 
-        // Close modal on outside click
-        document.getElementById('noteModal').addEventListener('click', (e) => {
-            if (e.target.id === 'noteModal') {
-                closeModal();
-            }
-        });
-
-        // Initial render
-        renderNotes();
-    </script>
+      init();
+    })();
+  </script>
 </body>
 </html>
