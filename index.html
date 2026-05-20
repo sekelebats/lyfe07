@@ -11,6 +11,37 @@
       box-sizing: border-box;
     }
 
+/* Tambahan di bagian bawah style, sebelum </style> */
+@media (max-width: 450px) {
+  .dashboard {
+    padding: 1.5rem 1.2rem;
+    border-radius: 2rem;
+  }
+  .search-box {
+    gap: 0.3rem;
+  }
+  .search-box input {
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+  }
+  .search-box button {
+    padding: 0.8rem 1rem;          /* padding lebih kecil */
+    font-size: 0;                  /* sembunyikan teks */
+    min-width: 44px;               /* lebar minimum untuk tap target */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .search-box button span {
+    font-size: 1.2rem;             /* tampilkan ikon saja */
+    margin: 0;
+  }
+  .search-box button::after {
+    content: '';                   /* pastikan tidak ada teks tambahan */
+  }
+}
+
+
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       min-height: 100vh;
