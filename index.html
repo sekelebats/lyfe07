@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jual Tema Premium - Demo Interaktif</title>
+    <title>Betterlyfe – Tema Premium</title>
     
-    <!-- Font Awesome untuk ikon (opsional) -->
+    <!-- Font Awesome untuk ikon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     
     <style>
-        /* ===== RESET & BASE ===== */
         * {
             margin: 0;
             padding: 0;
@@ -18,106 +17,110 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
+            background-color: #ffffff;
             color: #2d3436;
             line-height: 1.6;
-            min-height: 100vh;
+        }
+
+        /* ===== NAVBAR STICKY ===== */
+        .navbar {
+            position: sticky;
+            top: 0;
+            background: #ffffff;
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            z-index: 999;
         }
 
-        /* ===== HEADER MINIMALIS ===== */
-        header {
-            background: white;
-            padding: 1.5rem 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            text-align: center;
-            border-bottom: 3px solid #6c5ce7;
-        }
-
-        header h1 {
-            font-size: 2.2rem;
+        .navbar .logo {
+            font-size: 1.5rem;
             font-weight: 700;
             color: #2d3436;
-            margin-bottom: 0.3rem;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
         }
 
-        header h1 i {
+        .navbar .logo i {
             color: #6c5ce7;
-            margin-right: 10px;
+            font-size: 1.6rem;
         }
 
-        header p {
+        .navbar .nav-link {
+            font-weight: 500;
+            color: #636e72;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .navbar .nav-link:hover {
+            color: #6c5ce7;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem 2rem;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-header h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2d3436;
+            margin-bottom: 0.4rem;
+        }
+
+        .section-header p {
             color: #636e72;
             font-size: 1.1rem;
-        }
-
-        /* ===== KONTEN UTAMA ===== */
-        main {
-            flex: 1;
-            max-width: 1100px;
-            width: 100%;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-
-        .intro {
-            text-align: center;
-            margin-bottom: 2.5rem;
-        }
-
-        .intro h2 {
-            font-size: 1.8rem;
-            font-weight: 600;
-        }
-
-        .intro p {
-            color: #636e72;
-            font-size: 1rem;
-            max-width: 600px;
-            margin: 0.5rem auto 0;
+            max-width: 550px;
+            margin: 0 auto;
         }
 
         /* ===== GRID KARTU TEMA ===== */
         .theme-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.8rem;
+            gap: 2rem;
         }
 
         .theme-card {
-            background: white;
-            border-radius: 16px;
+            background: #ffffff;
+            border-radius: 18px;
             overflow: hidden;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
             display: flex;
             flex-direction: column;
         }
 
         .theme-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
         }
 
-        /* Placeholder gambar tema (bisa diganti tag <img> nanti) */
         .card-img {
-            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
             height: 180px;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 2.8rem;
             color: white;
-            font-size: 3rem;
         }
-        
-        .card-img.dark-bg {
-            background: linear-gradient(135deg, #2d3436, #636e72);
-        }
-        
-        .card-img.colorful-bg {
-            background: linear-gradient(135deg, #fd79a8, #e84393);
-        }
+
+        .card-img.minimal-bg { background: linear-gradient(135deg, #a29bfe, #6c5ce7); }
+        .card-img.dark-bg { background: linear-gradient(135deg, #2d3436, #636e72); }
+        .card-img.colorful-bg { background: linear-gradient(135deg, #fd79a8, #e84393); }
 
         .card-body {
             padding: 1.5rem;
@@ -127,7 +130,8 @@
         }
 
         .card-body h3 {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
+            font-weight: 600;
             margin-bottom: 0.5rem;
             color: #2d3436;
         }
@@ -143,14 +147,17 @@
             background: #6c5ce7;
             color: white;
             border: none;
-            padding: 0.7rem 1.5rem;
+            padding: 0.7rem 1.6rem;
             border-radius: 30px;
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
             align-self: flex-start;
-            box-shadow: 0 4px 10px rgba(108, 92, 231, 0.3);
+            box-shadow: 0 4px 10px rgba(108, 92, 231, 0.25);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
         }
 
         .btn-demo:hover {
@@ -158,32 +165,25 @@
             transform: scale(1.03);
         }
 
-        .btn-demo i {
-            margin-right: 6px;
-        }
-
-        /* ===== FOOTER SIMPLE ===== */
+        /* ===== FOOTER ===== */
         footer {
             text-align: center;
-            padding: 1.2rem;
+            padding: 1.5rem 1rem;
             color: #636e72;
-            background: white;
-            border-top: 1px solid #eee;
             font-size: 0.9rem;
-            margin-top: auto;
+            border-top: 1px solid #f0f0f0;
+            background: #ffffff;
         }
 
-        /* ===== MODAL PREVIEW ===== */
+        /* ===== MODAL PREVIEW (tetap sama seperti sebelumnya) ===== */
         .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.75);
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75);
             backdrop-filter: blur(4px);
-            z-index: 1000;
+            z-index: 10000;
             align-items: center;
             justify-content: center;
         }
@@ -217,10 +217,6 @@
             font-weight: 500;
         }
 
-        .modal-header span {
-            font-size: 0.95rem;
-        }
-
         .btn-close {
             background: transparent;
             border: none;
@@ -242,27 +238,34 @@
             position: relative;
         }
 
-        /* Iframe pengisi penuh modal-body */
         .modal-body iframe {
             width: 100%;
             height: 100%;
             border: none;
         }
 
-        /* Loading text saat iframe belum siap */
         .loading-indicator {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
             color: #636e72;
-            font-size: 0.9rem;
-            display: none; /* bisa diaktifkan via JS */
+            display: none;
         }
 
-        /* Responsif HP */
+        /* Responsif */
         @media (max-width: 600px) {
-            header h1 { font-size: 1.6rem; }
+            .navbar {
+                padding: 0.8rem 1.2rem;
+            }
+            .navbar .logo {
+                font-size: 1.3rem;
+            }
+            main {
+                padding: 2rem 1rem 1.5rem;
+            }
+            .section-header h2 {
+                font-size: 1.6rem;
+            }
             .modal-container {
                 width: 96%;
                 height: 90%;
@@ -273,57 +276,58 @@
 </head>
 <body>
 
-    <!-- ==================== HEADER ==================== -->
-    <header>
-        <h1><i class="fas fa-paint-brush"></i> Toko Tema Premium</h1>
-        <p>Demo langsung sebelum beli. Klik tema favoritmu!</p>
-    </header>
+    <!-- ==================== NAVBAR STICKY ==================== -->
+    <nav class="navbar">
+        <a href="#" class="logo">
+            <i class="fas fa-blog"></i> betterlyfe
+        </a>
+        <a href="#" class="nav-link">Dokumentasi</a>
+    </nav>
 
     <!-- ==================== MAIN CONTENT ==================== -->
     <main>
-        <div class="intro">
-            <h2>Pilihan Tema Terbaik</h2>
-            <p>Tiga desain profesional untuk website blog, portofolio, atau bisnismu. Klik tombol demo untuk melihat langsung.</p>
+        <div class="section-header">
+            <h2>Koleksi Tema Eksklusif</h2>
+            <p>Desain premium yang siap memperkuat identitas digital Anda.</p>
         </div>
 
         <div class="theme-grid">
-            <!-- TEMA 1: MINIMAL -->
+            <!-- TEMA MINIMAL -->
             <div class="theme-card">
-                <div class="card-img">
+                <div class="card-img minimal-bg">
                     <i class="fas fa-leaf"></i>
                 </div>
                 <div class="card-body">
                     <h3>🌿 Tema Minimal</h3>
-                    <p>Desain bersih & elegan. Cocok untuk blog pribadi, portofolio, atau company profile sederhana.</p>
-                    <!-- Ganti URL demo sesuai folder tema kamu -->
+                    <p>Desain bersih & elegan untuk blog pribadi, portofolio, atau company profile.</p>
                     <button class="btn-demo" onclick="bukaDemo('demo/tema-minimal/', 'Tema Minimal')">
                         <i class="fas fa-eye"></i> Lihat Demo
                     </button>
                 </div>
             </div>
 
-            <!-- TEMA 2: DARK MODE -->
+            <!-- TEMA DARK MODE -->
             <div class="theme-card">
                 <div class="card-img dark-bg">
                     <i class="fas fa-moon"></i>
                 </div>
                 <div class="card-body">
                     <h3>🌙 Tema Dark Mode</h3>
-                    <p>Tampilan gelap modern. Nyaman di mata, cocok untuk blog teknologi atau portofolio kreatif.</p>
+                    <p>Tampilan modern & nyaman di mata, cocok untuk blog teknologi atau portofolio kreatif.</p>
                     <button class="btn-demo" onclick="bukaDemo('demo/tema-dark/', 'Tema Dark Mode')">
                         <i class="fas fa-eye"></i> Lihat Demo
                     </button>
                 </div>
             </div>
 
-            <!-- TEMA 3: WARNA-WARNI -->
+            <!-- TEMA WARNA-WARNI -->
             <div class="theme-card">
                 <div class="card-img colorful-bg">
                     <i class="fas fa-palette"></i>
                 </div>
                 <div class="card-body">
                     <h3>🎨 Tema Warna-Warni</h3>
-                    <p>Ceria, penuh warna, dan playful. Ideal untuk blog lifestyle, komunitas, atau toko online.</p>
+                    <p>Ceria dan penuh warna, ideal untuk blog lifestyle, komunitas, atau toko online.</p>
                     <button class="btn-demo" onclick="bukaDemo('demo/tema-colorful/', 'Tema Warna-Warni')">
                         <i class="fas fa-eye"></i> Lihat Demo
                     </button>
@@ -334,7 +338,7 @@
 
     <!-- ==================== FOOTER ==================== -->
     <footer>
-        © 2025 Toko Tema Premium. Dibuat dengan ❤️ untuk jualan tema.
+        © betterlyfe | 2026
     </footer>
 
     <!-- ==================== MODAL PREVIEW ==================== -->
@@ -345,7 +349,6 @@
                 <button class="btn-close" onclick="tutupDemo()">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- Loading opsional, aktifkan jika perlu -->
                 <div class="loading-indicator" id="loadingText">Memuat tema...</div>
                 <iframe id="frameDemo" src="" title="Preview Tema"></iframe>
             </div>
@@ -360,19 +363,11 @@
         const loadingEl = document.getElementById('loadingText');
 
         function bukaDemo(urlTema, namaTema) {
-            // Tampilkan loading sementara
             loadingEl.style.display = 'block';
-            
-            // Set src iframe
             frame.src = urlTema;
-            
-            // Update judul modal
             modalTitle.textContent = 'Live Preview: ' + namaTema;
-            
-            // Tampilkan modal
             modal.style.display = 'flex';
             
-            // Sembunyikan loading setelah iframe selesai load
             frame.onload = function() {
                 loadingEl.style.display = 'none';
             };
@@ -380,20 +375,15 @@
 
         function tutupDemo() {
             modal.style.display = 'none';
-            // Kosongkan src agar berhenti loading (opsional, hemat resource)
             frame.src = '';
             loadingEl.style.display = 'none';
             modalTitle.textContent = 'Live Preview';
         }
 
-        // Klik di luar modal (area gelap) untuk menutup
         modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                tutupDemo();
-            }
+            if (e.target === modal) tutupDemo();
         });
 
-        // Tombol ESC untuk menutup modal
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && modal.style.display === 'flex') {
                 tutupDemo();
