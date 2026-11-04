@@ -1,5 +1,5 @@
 [build]
-  command = "npm run optimize"
+  command = "npm run build"
   publish = "public"
 
 [[headers]]
@@ -8,6 +8,11 @@
     Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
-  for = "/manifest.json"
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/app.css"
   [headers.values]
     Cache-Control = "public, max-age=300"
