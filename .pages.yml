@@ -1,0 +1,28 @@
+media:
+  - name: images
+    label: Gambar Website
+    input: images
+    output: /images
+    extensions: [jpg, jpeg, png, webp, avif]
+    categories: [image]
+    rename: safe
+
+content:
+  - name: gallery
+    label: Gallery
+    type: collection
+    path: content/gallery
+    format: yaml
+    fields:
+      - name: title
+        label: Judul
+        type: string
+      - name: photos
+        label: Foto
+        type: image
+        options:
+          media: images
+          multiple:
+            max: 20
+          extensions: [jpg, png, webp, avif]
+          rename: safe
