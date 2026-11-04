@@ -84,7 +84,10 @@ function cardHtml(img) {
   const avifSrcset = buildSrcset(img.variants, 'avif');
   const webpSrcset = buildSrcset(img.variants, 'webp');
   const pictureHtml = buildPicture(img);
-  const thumb = img.variants.find(v => v.size === 480 && v.format === 'webp')
+
+  // Thumbnail: prioritas AVIF 480w → AVIF size lain → WebP → fallback
+  const thumb = img.variants.find(v => v.size === 480 && v.format === 'avif')
+             || img.variants.find(v => v.format === 'avif')
              || img.variants.find(v => v.format === 'webp')
              || { url: img.fallback };
 
@@ -96,9 +99,9 @@ function cardHtml(img) {
       .join('');
 
   return `
-  <article class="card group flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
-    <div class="relative aspect-[4/3] overflow-hidden bg-muted">
-      <img src="${thumb.url}" alt="${esc(img.name)}" loading="lazy" decoding="async" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105">
+  <article class="card group mb-4 break-inside-avoid overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
+    <div class="relative overflow-hidden bg-muted">
+      <img src="${thumb.url}" alt="${esc(img.name)}" loading="lazy" decoding="async" width="${img.width}" height="${img.height}" class="block h-auto w-full transition-opacity duration-300 group-hover:opacity-90">
     </div>
     <div class="flex flex-col gap-3 p-4">
       <div class="flex flex-col gap-1">
@@ -140,12 +143,15 @@ async function generateGallery(images) {
   const cards = images.map(cardHtml).join('\n');
   const totalSize = images.reduce((sum, img) => sum + img.variants.reduce((s, v) => s + v.bytes, 0), 0);
 
-  const emptyState = images.length === 0 ? `
-    <div class="col-span-full flex flex-col items-center justify-center py-24 text-center text-muted-foreground">
+  const bodyContent = images.length === 0 ? `
+    <div class="flex flex-col items-center justify-center py-24 text-center text-muted-foreground">
       <div class="mb-4 opacity-50">${icons.imageOff}</div>
       <h2 class="text-lg font-semibold text-foreground">Belum ada gambar</h2>
       <p class="mt-1 text-sm">Upload lewat Pages CMS atau taruh di <code class="rounded bg-muted px-1.5 py-0.5 text-xs">images/</code></p>
-    </div>` : '';
+    </div>` : `
+    <div class="columns-1 gap-4 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5" id="grid">
+      ${cards}
+    </div>`;
 
   const html = `<!DOCTYPE html>
 <html lang="id">
@@ -174,10 +180,7 @@ async function generateGallery(images) {
   </div>
 </header>
 <main class="mx-auto max-w-7xl px-4 py-6 md:px-6">
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" id="grid">
-    ${cards}
-    ${emptyState}
-  </div>
+  ${bodyContent}
 </main>
 <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 translate-y-20 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground opacity-0 shadow-lg shadow-primary/25 transition-all duration-300" id="toast"></div>
 <script>
@@ -205,13 +208,16 @@ async function generateGallery(images) {
   document.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', (e) => { e.stopPropagation(); copy(btn.dataset.copy, btn); });
   });
-  document.getElementById('search').addEventListener('input', (e) => {
-    const q = e.target.value.trim().toLowerCase();
-    document.querySelectorAll('.card').forEach(card => {
-      const name = card.querySelector('h3').textContent.toLowerCase();
-      card.style.display = name.includes(q) ? '' : 'none';
+  const search = document.getElementById('search');
+  if (search) {
+    search.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      document.querySelectorAll('.card').forEach(card => {
+        const name = card.querySelector('h3').textContent.toLowerCase();
+        card.style.display = name.includes(q) ? '' : 'none';
+      });
     });
-  });
+  }
 })();
 </script>
 </body>
