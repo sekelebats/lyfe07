@@ -1,13 +1,19 @@
 {
-  "name": "image-cdn",
+  "name": "fzh-assets",
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": {
     "optimize": "node scripts/optimize.js",
+    "build:css": "tailwindcss -i ./styles/tailwind.css -o ./public/app.css --minify",
+    "build": "npm run optimize && npm run build:css",
     "dev": "npx serve public"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.1.0",
     "glob": "^10.4.0",
     "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
   }
 }
