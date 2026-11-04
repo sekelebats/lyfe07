@@ -1,0 +1,13 @@
+{
+  "name": "image-cdn",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "optimize": "node scripts/optimize.js",
+    "dev": "npx serve public"
+  },
+  "dependencies": {
+    "glob": "^10.4.0",
+    "sharp": "^0.33.5"
+  }
+}
