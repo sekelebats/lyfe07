@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import { glob } from 'glob';
+import yaml from 'js-yaml';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -26,9 +27,34 @@ const icons = {
   imageOff: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" x2="6" y1="13.5" y2="21"/><line x1="18" x2="21" y1="12" y2="15"/><path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59"/><path d="M21 15V5a2 2 0 0 0-2-2H9"/></svg>`,
 };
 
+/* ─── Title Map (caption dari YAML Pages CMS) ─── */
+async function getTitleMap() {
+  const map = {};
+  const files = await glob('content/gallery/*.{yml,yaml}', { nodir: true });
+  for (const f of files) {
+    try {
+      const data = yaml.load(await fs.readFile(f, 'utf8'));
+      if (!data?.title) continue;
+      const imgs = Array.isArray(data.photos)
+        ? data.photos
+        : data.image
+          ? [data.image]
+          : [];
+      for (const p of imgs) {
+        if (typeof p === 'string') map[p.replace(/^\//, '')] = data.title;
+      }
+    } catch (e) {
+      console.warn(`⚠️  Gagal baca ${f}: ${e.message}`);
+    }
+  }
+  console.log(`🗂️  ${Object.keys(map).length} gambar punya caption dari ${files.length} YAML`);
+  return map;
+}
+
 /* ─── Processing ─── */
-async function processImage(file) {
+async function processImage(file, titleMap) {
   const base = path.basename(file, path.extname(file));
+  const title = titleMap[file] || base;
   const slug = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const outDir = path.join(OUTPUT_DIR, slug);
   await fs.mkdir(outDir, { recursive: true });
@@ -55,9 +81,11 @@ async function processImage(file) {
     .toFile(path.join(outDir, 'fallback.jpg'));
 
   return {
-    slug, name: base,
+    slug,
+    name: title,
     fallback: `/images/${slug}/fallback.jpg`,
-    width: meta.width, height: meta.height,
+    width: meta.width,
+    height: meta.height,
     variants,
   };
 }
@@ -85,7 +113,6 @@ function cardHtml(img) {
   const webpSrcset = buildSrcset(img.variants, 'webp');
   const pictureHtml = buildPicture(img);
 
-  // Thumbnail: prioritas AVIF 480w → AVIF size lain → WebP → fallback
   const thumb = img.variants.find(v => v.size === 480 && v.format === 'avif')
              || img.variants.find(v => v.format === 'avif')
              || img.variants.find(v => v.format === 'webp')
@@ -99,11 +126,11 @@ function cardHtml(img) {
       .join('');
 
   return `
-  <article class="card group mb-4 break-inside-avoid overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
+  <article class="card group mb-5 sm:mb-4 break-inside-avoid overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
     <div class="relative overflow-hidden bg-muted">
       <img src="${thumb.url}" alt="${esc(img.name)}" loading="lazy" decoding="async" width="${img.width}" height="${img.height}" class="block h-auto w-full transition-opacity duration-300 group-hover:opacity-90">
     </div>
-    <div class="flex flex-col gap-3 p-4">
+    <div class="flex flex-col gap-3 p-4 sm:p-4">
       <div class="flex flex-col gap-1">
         <h3 class="truncate text-sm font-semibold" title="${esc(img.name)}">${esc(img.name)}</h3>
         <p class="text-xs text-muted-foreground">${img.width} × ${img.height} · ${img.variants.length} varian</p>
@@ -145,11 +172,11 @@ async function generateGallery(images) {
 
   const bodyContent = images.length === 0 ? `
     <div class="flex flex-col items-center justify-center py-24 text-center text-muted-foreground">
-      <div class="mb-4 opacity-50">${icons.imageOff}</div>
+      <div class="mb-4 opacity-40">${icons.imageOff}</div>
       <h2 class="text-lg font-semibold text-foreground">Belum ada gambar</h2>
       <p class="mt-1 text-sm">Upload lewat Pages CMS atau taruh di <code class="rounded bg-muted px-1.5 py-0.5 text-xs">images/</code></p>
     </div>` : `
-    <div class="columns-1 gap-4 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5" id="grid">
+    <div class="columns-1 gap-5 sm:columns-2 sm:gap-4 md:columns-3 lg:columns-4 xl:columns-5" id="grid">
       ${cards}
     </div>`;
 
@@ -162,9 +189,9 @@ async function generateGallery(images) {
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<header class="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-  <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 md:px-6">
-    <a href="/" class="flex items-center gap-2 text-lg font-bold tracking-tight">
+<header class="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
+  <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-5 py-4 sm:px-6">
+    <a href="/" class="flex items-center gap-2 text-lg font-bold tracking-tight text-foreground">
       <span class="text-primary">${icons.images}</span>
       <span>FZH <span class="text-primary">Assets</span></span>
     </a>
@@ -175,11 +202,11 @@ async function generateGallery(images) {
     </div>
     <div class="relative ml-auto w-full max-w-sm sm:w-auto sm:flex-1 sm:max-w-md">
       <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">${icons.search}</span>
-      <input type="search" id="search" placeholder="Cari nama gambar..." autocomplete="off" class="w-full rounded-md border border-border bg-secondary px-3 py-2 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+      <input type="search" id="search" placeholder="Cari nama gambar..." autocomplete="off" class="w-full rounded-md border border-border bg-secondary px-3 py-2 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary">
     </div>
   </div>
 </header>
-<main class="mx-auto max-w-7xl px-4 py-6 md:px-6">
+<main class="mx-auto max-w-7xl px-5 py-6 sm:px-6 sm:py-8 md:py-10">
   ${bodyContent}
 </main>
 <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 translate-y-20 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground opacity-0 shadow-lg shadow-primary/25 transition-all duration-300" id="toast"></div>
@@ -240,6 +267,7 @@ async function main() {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   await copyFont();
 
+  const titleMap = await getTitleMap();
   const files = await glob(`${INPUT_DIR}/*.{jpg,jpeg,png,webp,avif,JPG,JPEG,PNG,WEBP}`, { nodir: true });
 
   if (files.length === 0) {
@@ -252,7 +280,7 @@ async function main() {
   const images = [];
   for (const file of files) {
     console.log(`  → ${path.basename(file)}`);
-    images.push(await processImage(file));
+    images.push(await processImage(file, titleMap));
   }
   await generateGallery(images);
   await fs.writeFile(path.join(PUBLIC_DIR, 'manifest.json'), JSON.stringify(images, null, 2));
