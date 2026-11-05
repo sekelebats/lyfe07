@@ -5,7 +5,7 @@ media:
     output: /images
     extensions: [jpg, jpeg, png, webp, avif]
     categories: [image]
-    rename: safe
+    rename: random
 
 content:
   - name: gallery
@@ -15,8 +15,9 @@ content:
     format: yaml
     fields:
       - name: title
-        label: Judul
+        label: Judul / Caption
         type: string
+        required: true
       - name: photos
         label: Foto
         type: image
@@ -24,5 +25,4 @@ content:
           media: images
           multiple:
             max: 20
-          extensions: [jpg, png, webp, avif]
-          rename: safe
+          extensions: [jpg, jpeg, png, webp, avif]
