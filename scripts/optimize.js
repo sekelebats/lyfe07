@@ -26,7 +26,7 @@ const icons = {
   imageOff: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" x2="6" y1="13.5" y2="21"/><line x1="18" x2="21" y1="12" y2="15"/><path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59"/><path d="M21 15V5a2 2 0 0 0-2-2H9"/></svg>`,
 };
 
-/* ─── Baca caption dari SEMUA file di content/ ─── */
+/* ─── Baca caption dari content/** ─── */
 async function getTitleMap() {
   const map = {};
   const debug = { files: [], parsed: [], errors: [] };
@@ -55,7 +55,6 @@ async function getTitleMap() {
 
       if (!data || typeof data !== 'object') { debug.errors.push({ file: f, error: 'not object' }); continue; }
 
-      // Prioritaskan title, caption, judul. `name` hanya fallback terakhir.
       let caption = data.title || data.caption || data.judul || data.alt;
       if (!caption && data.name && typeof data.name === 'string' && !/^[a-z0-9]{8,}-[a-z0-9]{8,}$/i.test(data.name)) {
         caption = data.name;
@@ -111,7 +110,7 @@ async function processImage(file, titleMap) {
     titleMap[path.basename(file)] ||
     titleMap[file.replace(/^images\//, '')] ||
     titleMap[`images/${path.basename(file)}`] ||
-    base; // fallback: nama file asli (bukan hash random kalau filename mengandung '-'?)
+    base;
 
   const slug = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const outDir = path.join(OUTPUT_DIR, slug);
@@ -174,7 +173,6 @@ function cardHtml(img) {
     <div class="flex flex-col gap-3 p-5">
       <div class="flex flex-col gap-1.5">
         <h3 class="truncate text-sm font-semibold" title="${esc(img.name)}">${esc(img.name)}</h3>
-        <figcaption class="text-xs text-muted-foreground">${esc(img.name)}</figcaption>
         <p class="text-xs text-muted-foreground">${img.width} × ${img.height} · ${img.variants.length} varian</p>
       </div>
       <div class="flex flex-col gap-2.5">
