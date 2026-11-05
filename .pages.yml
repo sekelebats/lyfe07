@@ -1,18 +1,10 @@
-media:
-  - name: images
-    label: Gambar Website
-    input: images
-    output: /images
-    extensions: [jpg, jpeg, png, webp, avif]
-    categories: [image]
-    rename: random
-
 content:
   - name: gallery
     label: Gallery
     type: collection
     path: content/gallery
-    format: yaml
+    format: yaml-frontmatter   # ← ini yang benar untuk file .md
+    filename: "{primary}.md"   # ← pastikan output .md
     fields:
       - name: title
         label: Judul / Caption
