@@ -26,17 +26,17 @@ const icons = {
   imageOff: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" x2="6" y1="13.5" y2="21"/><line x1="18" x2="21" y1="12" y2="15"/><path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59"/><path d="M21 15V5a2 2 0 0 0-2-2H9"/></svg>`,
 };
 
-/* ─── Title Map: baca .md frontmatter, .yml/.yaml, dan .json ─── */
+/* ─── Baca caption dari SEMUA file di content/ ─── */
 async function getTitleMap() {
   const map = {};
-  const debug = { scanned: [], parsed: [], errors: [] };
+  const debug = { files: [], parsed: [], errors: [] };
 
-  const files = await glob('**/*.{md,mdx,yml,yaml,json}', {
+  const files = await glob('content/**/*.{md,mdx,yml,yaml,json}', {
     nodir: true,
-    ignore: ['node_modules/**', '.git/**', 'public/**', 'images/**', '.netlify/**', 'package*.json'],
+    ignore: ['node_modules/**', 'public/**', 'images/**'],
   });
-
-  console.log(`\n📂 Scanning ${files.length} files untuk caption...`);
+  debug.files = files;
+  console.log(`\n📂 Scanning ${files.length} files in content/ ...`);
 
   for (const f of files) {
     try {
@@ -44,31 +44,32 @@ async function getTitleMap() {
       let data = null;
 
       if (f.endsWith('.md') || f.endsWith('.mdx')) {
-        const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-        if (!match) continue;
-        data = yaml.load(match[1]);
-      } else if (f.endsWith('.yml') || f.endsWith('.yaml')) {
-        data = yaml.load(raw);
+        const m = raw.match(/^\uFEFF?---\r?\n([\s\S]*?)\r?\n---/);
+        if (!m) { debug.errors.push({ file: f, error: 'no frontmatter' }); continue; }
+        data = yaml.load(m[1]);
       } else if (f.endsWith('.json')) {
         data = JSON.parse(raw);
+      } else {
+        data = yaml.load(raw);
       }
 
-      if (!data || typeof data !== 'object') continue;
+      if (!data || typeof data !== 'object') { debug.errors.push({ file: f, error: 'not object' }); continue; }
 
-      // Title HANYA dari field resmi. `name` di-skip (itu hash random Pages CMS).
-      const title = data.title || data.caption || data.judul || data.alt;
-      if (!title || typeof title !== 'string' || !title.trim()) {
-        debug.scanned.push({ file: f, skipped: 'no title field', fields: Object.keys(data) });
+      // Prioritaskan title, caption, judul. `name` hanya fallback terakhir.
+      let caption = data.title || data.caption || data.judul || data.alt;
+      if (!caption && data.name && typeof data.name === 'string' && !/^[a-z0-9]{8,}-[a-z0-9]{8,}$/i.test(data.name)) {
+        caption = data.name;
+      }
+      if (!caption || typeof caption !== 'string' || !caption.trim()) {
+        debug.errors.push({ file: f, error: 'no caption field', keys: Object.keys(data) });
         continue;
       }
 
-      // Walk rekursif cari path gambar
       const paths = [];
       (function walk(obj) {
         if (!obj) return;
         if (typeof obj === 'string') {
-          const s = obj.trim();
-          if (/\.(jpe?g|png|webp|avif|gif)$/i.test(s)) paths.push(s);
+          if (/\.(jpe?g|png|webp|avif|gif)$/i.test(obj.trim())) paths.push(obj.trim());
           return;
         }
         if (Array.isArray(obj)) { obj.forEach(walk); return; }
@@ -76,7 +77,7 @@ async function getTitleMap() {
       })(data);
 
       if (paths.length === 0) {
-        debug.scanned.push({ file: f, title, skipped: 'no image path' });
+        debug.errors.push({ file: f, error: 'no image path', caption });
         continue;
       }
 
@@ -84,15 +85,14 @@ async function getTitleMap() {
         let clean = String(p).replace(/^\//, '').trim();
         try { clean = decodeURIComponent(clean); } catch {}
         const basename = path.basename(clean);
-
-        map[clean] = title.trim();
-        map[basename] = title.trim();
-        map[`images/${basename}`] = title.trim();
-        map[clean.replace(/^images\//, '')] = title.trim();
+        map[clean] = caption.trim();
+        map[basename] = caption.trim();
+        map[`images/${basename}`] = caption.trim();
+        map[clean.replace(/^images\//, '')] = caption.trim();
       }
 
-      debug.parsed.push({ file: f, title, images: paths.length });
-      console.log(`  ✓ ${f} → "${title}" (${paths.length} gambar)`);
+      debug.parsed.push({ file: f, caption: caption.trim(), paths });
+      console.log(`  ✓ ${path.basename(f)} → "${caption.trim()}" (${paths.length} gambar)`);
     } catch (e) {
       debug.errors.push({ file: f, error: e.message });
     }
@@ -100,20 +100,18 @@ async function getTitleMap() {
 
   await fs.writeFile(path.join(PUBLIC_DIR, 'debug-caption.json'), JSON.stringify(debug, null, 2));
   console.log(`🗂️  Caption entries: ${Object.keys(map).length}\n`);
-
   return map;
 }
 
-/* ─── Processing ─── */
 async function processImage(file, titleMap) {
   const base = path.basename(file, path.extname(file));
 
-  const title =
+  const caption =
     titleMap[file] ||
     titleMap[path.basename(file)] ||
     titleMap[file.replace(/^images\//, '')] ||
     titleMap[`images/${path.basename(file)}`] ||
-    base;
+    base; // fallback: nama file asli (bukan hash random kalau filename mengandung '-'?)
 
   const slug = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const outDir = path.join(OUTPUT_DIR, slug);
@@ -126,21 +124,15 @@ async function processImage(file, titleMap) {
     if (size > meta.width) continue;
     for (const fmt of FORMATS) {
       const outPath = path.join(outDir, `${size}.${fmt.ext}`);
-      await sharp(file)
-        .resize({ width: size, withoutEnlargement: true })
-        .toFormat(fmt.ext, fmt.opts)
-        .toFile(outPath);
+      await sharp(file).resize({ width: size, withoutEnlargement: true }).toFormat(fmt.ext, fmt.opts).toFile(outPath);
       const stat = await fs.stat(outPath);
       variants.push({ size, format: fmt.ext, url: `/images/${slug}/${size}.${fmt.ext}`, bytes: stat.size });
     }
   }
 
-  await sharp(file)
-    .resize({ width: Math.min(1280, meta.width), withoutEnlargement: true })
-    .jpeg({ quality: 82 })
-    .toFile(path.join(outDir, 'fallback.jpg'));
+  await sharp(file).resize({ width: Math.min(1280, meta.width), withoutEnlargement: true }).jpeg({ quality: 82 }).toFile(path.join(outDir, 'fallback.jpg'));
 
-  return { slug, name: title, fallback: `/images/${slug}/fallback.jpg`, width: meta.width, height: meta.height, variants };
+  return { slug, name: caption, fallback: `/images/${slug}/fallback.jpg`, width: meta.width, height: meta.height, variants };
 }
 
 const buildSrcset = (variants, format) =>
@@ -157,8 +149,7 @@ const buildPicture = (img) => {
 </picture>`;
 };
 
-const fmtSize = (b) =>
-  b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : b > 1024 ? (b / 1024).toFixed(0) + ' KB' : b + ' B';
+const fmtSize = (b) => b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : b > 1024 ? (b / 1024).toFixed(0) + ' KB' : b + ' B';
 
 function cardHtml(img) {
   const avifSrcset = buildSrcset(img.variants, 'avif');
@@ -183,21 +174,17 @@ function cardHtml(img) {
     <div class="flex flex-col gap-3 p-5">
       <div class="flex flex-col gap-1.5">
         <h3 class="truncate text-sm font-semibold" title="${esc(img.name)}">${esc(img.name)}</h3>
+        <figcaption class="text-xs text-muted-foreground">${esc(img.name)}</figcaption>
         <p class="text-xs text-muted-foreground">${img.width} × ${img.height} · ${img.variants.length} varian</p>
       </div>
       <div class="flex flex-col gap-2.5">
-        <button class="copy-btn inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" data-copy="${esc(pictureHtml)}">
-          ${icons.copy}<span>Copy &lt;picture&gt;</span>
-        </button>
+        <button class="copy-btn inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" data-copy="${esc(pictureHtml)}">${icons.copy}<span>Copy &lt;picture&gt;</span></button>
         <div class="grid grid-cols-2 gap-2">
           <button class="copy-btn inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(avifSrcset)}">AVIF srcset</button>
           <button class="copy-btn inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(webpSrcset)}">WebP srcset</button>
         </div>
         <details class="group text-xs text-muted-foreground">
-          <summary class="flex cursor-pointer items-center justify-between rounded-md px-1 py-1 hover:text-foreground">
-            <span>Ukuran individual</span>
-            <span class="transition-transform group-open:rotate-180">${icons.chevronDown}</span>
-          </summary>
+          <summary class="flex cursor-pointer items-center justify-between rounded-md px-1 py-1 hover:text-foreground"><span>Ukuran individual</span><span class="transition-transform group-open:rotate-180">${icons.chevronDown}</span></summary>
           <div class="mt-3 flex flex-col gap-3">
             <div><div class="mb-1.5 text-[10px] uppercase tracking-wider font-semibold">AVIF</div><div class="flex flex-wrap gap-1.5">${sizePills('avif')}</div></div>
             <div><div class="mb-1.5 text-[10px] uppercase tracking-wider font-semibold">WebP</div><div class="flex flex-wrap gap-1.5">${sizePills('webp')}</div></div>
@@ -218,16 +205,14 @@ async function generateGallery(images) {
       <h2 class="text-lg font-semibold text-foreground">Belum ada gambar</h2>
       <p class="mt-1 text-sm">Upload lewat Pages CMS atau taruh di <code class="rounded bg-muted px-1.5 py-0.5 text-xs">images/</code></p>
     </div>` : `
-    <div class="columns-1 gap-6 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5" id="grid">
-      ${cards}
-    </div>`;
+    <div class="columns-1 gap-6 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5" id="grid">${cards}</div>`;
 
   const html = `<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FZH Assets · Image Library</title>
+<title>FZH Assets</title>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -244,65 +229,29 @@ async function generateGallery(images) {
         <span><b class="text-foreground">${fmtSize(totalSize)}</b> varian</span>
       </div>
       <div class="relative sm:w-full sm:max-w-md">
-        <button type="button" id="searchToggle" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-secondary text-muted-foreground transition-colors hover:bg-accent sm:hidden" aria-label="Cari">
-          ${icons.search}
-        </button>
+        <button type="button" id="searchToggle" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-secondary text-muted-foreground transition-colors hover:bg-accent sm:hidden" aria-label="Cari">${icons.search}</button>
         <div id="searchWrap" class="absolute right-0 top-full z-50 mt-2 hidden w-72 rounded-md border border-border bg-background p-1 shadow-lg sm:static sm:mt-0 sm:block sm:w-full sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
           <div class="relative">
             <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">${icons.search}</span>
-            <input type="search" id="search" placeholder="Cari nama gambar..." autocomplete="off" class="w-full rounded-md border border-border bg-secondary px-3 py-2.5 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
+            <input type="search" id="search" placeholder="Cari caption..." autocomplete="off" class="w-full rounded-md border border-border bg-secondary px-3 py-2.5 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
           </div>
         </div>
       </div>
     </div>
   </div>
 </header>
-<main class="mx-auto max-w-7xl px-5 py-7 sm:px-6 sm:py-8 md:py-10">
-  ${bodyContent}
-</main>
+<main class="mx-auto max-w-7xl px-5 py-7 sm:px-6 sm:py-8 md:py-10">${bodyContent}</main>
 <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 translate-y-20 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground opacity-0 shadow-lg transition-all duration-300" id="toast"></div>
 <script>
 (function(){
-  var toggle = document.getElementById('searchToggle');
-  var wrap = document.getElementById('searchWrap');
-  if (toggle && wrap) {
-    toggle.addEventListener('click', function(e){ e.stopPropagation(); wrap.classList.toggle('hidden'); });
-    document.addEventListener('click', function(e){
-      if (window.innerWidth < 640 && wrap && !wrap.classList.contains('hidden') && !wrap.contains(e.target) && e.target !== toggle) wrap.classList.add('hidden');
-    });
-  }
-  var toast = document.getElementById('toast');
-  var t;
-  function showToast(msg){
-    toast.textContent = msg || '✓ Copied!';
-    toast.classList.remove('translate-y-20','opacity-0');
-    clearTimeout(t);
-    t = setTimeout(function(){ toast.classList.add('translate-y-20','opacity-0'); }, 1500);
-  }
-  function copy(text, el){
-    navigator.clipboard.writeText(text).then(function(){
-      if (el) {
-        var orig = el.innerHTML;
-        el.innerHTML = '<span>✓ Copied!</span>';
-        el.classList.add('copied');
-        setTimeout(function(){ el.innerHTML = orig; el.classList.remove('copied'); }, 1200);
-      }
-      showToast();
-    }).catch(function(){ showToast('❌ Gagal copy'); });
-  }
-  document.querySelectorAll('.copy-btn').forEach(function(btn){
-    btn.addEventListener('click', function(e){ e.stopPropagation(); copy(btn.dataset.copy, btn); });
-  });
-  var search = document.getElementById('search');
-  if (search) {
-    search.addEventListener('input', function(e){
-      var q = e.target.value.trim().toLowerCase();
-      document.querySelectorAll('.card').forEach(function(card){
-        var name = card.querySelector('h3').textContent.toLowerCase();
-        card.style.display = name.indexOf(q) !== -1 ? '' : 'none';
-      });
-    });
-  }
+  var toggle=document.getElementById('searchToggle'),wrap=document.getElementById('searchWrap');
+  if(toggle&&wrap){toggle.addEventListener('click',function(e){e.stopPropagation();wrap.classList.toggle('hidden')});document.addEventListener('click',function(e){if(window.innerWidth<640&&wrap&&!wrap.classList.contains('hidden')&&!wrap.contains(e.target)&&e.target!==toggle)wrap.classList.add('hidden')})}
+  var toast=document.getElementById('toast'),t;
+  function showToast(m){toast.textContent=m||'✓ Copied!';toast.classList.remove('translate-y-20','opacity-0');clearTimeout(t);t=setTimeout(function(){toast.classList.add('translate-y-20','opacity-0')},1500)}
+  function copy(text,el){navigator.clipboard.writeText(text).then(function(){if(el){var o=el.innerHTML;el.innerHTML='<span>✓</span>';el.classList.add('copied');setTimeout(function(){el.innerHTML=o;el.classList.remove('copied')},1200)}showToast()}).catch(function(){showToast('❌ Gagal')})}
+  document.querySelectorAll('.copy-btn').forEach(function(b){b.addEventListener('click',function(e){e.stopPropagation();copy(b.dataset.copy,b)})});
+  var s=document.getElementById('search');
+  if(s){s.addEventListener('input',function(e){var q=e.target.value.trim().toLowerCase();document.querySelectorAll('.card').forEach(function(c){var n=c.querySelector('h3').textContent.toLowerCase();c.style.display=n.indexOf(q)!==-1?'':'none'})})}
 })();
 </script>
 </body>
@@ -313,8 +262,7 @@ async function generateGallery(images) {
 
 async function copyFont() {
   await fs.mkdir(path.join(PUBLIC_DIR, 'fonts'), { recursive: true });
-  try { await fs.copyFile(FONT_SRC, FONT_DEST); }
-  catch { console.warn('⚠️ Inter font tidak ditemukan'); }
+  try { await fs.copyFile(FONT_SRC, FONT_DEST); } catch { console.warn('⚠️ Font missing'); }
 }
 
 async function main() {
@@ -339,7 +287,7 @@ async function main() {
   }
   await generateGallery(images);
   await fs.writeFile(path.join(PUBLIC_DIR, 'manifest.json'), JSON.stringify(images, null, 2));
-  console.log(`\n✅ Selesai: ${images.length} gambar\n`);
+  console.log(`\n✅ ${images.length} gambar diproses\n`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
