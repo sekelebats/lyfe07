@@ -26,69 +26,63 @@ const icons = {
   imageOff: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" x2="6" y1="13.5" y2="21"/><line x1="18" x2="21" y1="12" y2="15"/><path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59"/><path d="M21 15V5a2 2 0 0 0-2-2H9"/></svg>`,
 };
 
-/* ─── Title Map: Robust, handle berbagai format YAML ─── */
+/* ─── Title Map: hanya pakai `title` murni, pindai path gambar rekursif ─── */
 async function getTitleMap() {
   const map = {};
   const files = await glob('content/gallery/*.{yml,yaml}', { nodir: true });
-  console.log(`\n📂 YAML files found: ${files.length}`);
+  console.log(`\n📂 YAML files: ${files.length}`);
 
   for (const f of files) {
     try {
       const data = yaml.load(await fs.readFile(f, 'utf8'));
       if (!data || typeof data !== 'object') continue;
 
-      const title = data.title || data.caption || data.name;
-      if (!title) {
+      // HANYA ambil title dari field `title` (atau caption/judul). Jangan pernah pakai `name`.
+      const title = data.title || data.caption || data.judul;
+      if (!title || typeof title !== 'string' || !title.trim()) {
         console.log(`  ⚠️ ${path.basename(f)}: no title field. Keys: ${Object.keys(data).join(', ')}`);
         continue;
       }
 
-      // Kumpulkan semua field yang mungkin berisi gambar
-      const candidates = [];
-      for (const key of ['photos', 'images', 'image', 'foto', 'gambar', 'files', 'media', 'gallery']) {
-        if (data[key]) {
-          const val = data[key];
-          if (Array.isArray(val)) {
-            for (const item of val) candidates.push({ key, item });
-          } else {
-            candidates.push({ key, item: val });
+      // Kumpulkan semua string yang berakhiran ekstensi gambar atau mengandung /images/
+      const paths = [];
+      function walk(obj) {
+        if (!obj) return;
+        if (typeof obj === 'string') {
+          const s = obj.trim();
+          if (/\.(jpg|jpeg|png|webp|avif|gif)$/i.test(s) || /\/images\//.test(s) || /^images\//.test(s)) {
+            paths.push(s);
           }
+          return;
         }
+        if (Array.isArray(obj)) { obj.forEach(walk); return; }
+        if (typeof obj === 'object') { Object.values(obj).forEach(walk); }
       }
+      walk(data);
 
-      if (candidates.length === 0) {
-        console.log(`  ⚠️ ${path.basename(f)}: title="${title}" but no image field found`);
+      if (paths.length === 0) {
+        console.log(`  ⚠️ ${path.basename(f)}: title="${title}" tapi tidak ada path gambar`);
         continue;
       }
 
-      for (const { item } of candidates) {
-        let p = null;
-        if (typeof item === 'string') {
-          p = item;
-        } else if (item && typeof item === 'object') {
-          p = item.path || item.src || item.url || item.image || item.file || item.value;
-        }
-        if (!p) continue;
-
-        // Normalisasi: hapus leading slash, decode URI, ambil basename
-        let clean = String(p).replace(/^\//, '');
+      for (const p of paths) {
+        let clean = String(p).replace(/^\//, '').trim();
         try { clean = decodeURIComponent(clean); } catch {}
         const basename = path.basename(clean);
 
-        // Simpan berbagai format key untuk matching
-        map[clean] = title;                          // images/xxx.png
-        map[basename] = title;                       // xxx.png
+        // Simpan 4 variasi key agar matching di processImage selalu kena
+        map[clean] = title;                         // images/xxx.png
+        map[basename] = title;                      // xxx.png
         map[clean.replace(/^images\//, '')] = title; // xxx.png (tanpa prefix)
-        map[`images/${basename}`] = title;           // images/xxx.png
-
-        console.log(`  ✓ ${basename} → "${title}"`);
+        map[`images/${basename}`] = title;          // images/xxx.png
       }
+      console.log(`  ✓ ${path.basename(f)} → "${title}" (${paths.length} gambar)`);
     } catch (e) {
       console.warn(`  ❌ ${path.basename(f)}: ${e.message}`);
     }
   }
 
-  console.log(`🗂️ Caption map entries: ${Object.keys(map).length}\n`);
+  console.log(`🗂️  Total caption entries: ${Object.keys(map).length}\n`);
   return map;
 }
 
@@ -96,13 +90,13 @@ async function getTitleMap() {
 async function processImage(file, titleMap) {
   const base = path.basename(file, path.extname(file));
 
-  // Lookup bertingkat: full path, basename, tanpa prefix
+  // Lookup bertingkat — pastikan title dari YAML menang
   const title =
     titleMap[file] ||
     titleMap[path.basename(file)] ||
     titleMap[file.replace(/^images\//, '')] ||
     titleMap[`images/${path.basename(file)}`] ||
-    base;
+    base; // fallback terakhir: nama file asli (bukan random hash)
 
   const slug = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const outDir = path.join(OUTPUT_DIR, slug);
@@ -226,15 +220,12 @@ async function generateGallery(images) {
       <span class="text-primary">${icons.images}</span>
       <span>FZH <span class="text-primary">Assets</span></span>
     </a>
-
-    <!-- Search: icon-only di mobile, expand di desktop -->
     <div class="ml-auto flex items-center gap-2 sm:flex-1 sm:justify-end">
       <div class="hidden items-center gap-3 text-xs text-muted-foreground md:flex">
         <span><b class="text-foreground">${images.length}</b> gambar</span>
         <span class="text-border">·</span>
         <span><b class="text-foreground">${fmtSize(totalSize)}</b> varian</span>
       </div>
-
       <div class="relative sm:w-full sm:max-w-md">
         <button type="button" id="searchToggle" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-secondary text-muted-foreground transition-colors hover:bg-accent sm:hidden" aria-label="Cari">
           ${icons.search}
@@ -255,21 +246,14 @@ async function generateGallery(images) {
 <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 translate-y-20 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground opacity-0 shadow-lg transition-all duration-300" id="toast"></div>
 <script>
 (function(){
-  // Search toggle mobile
   var toggle = document.getElementById('searchToggle');
   var wrap = document.getElementById('searchWrap');
   if (toggle && wrap) {
-    toggle.addEventListener('click', function(e){
-      e.stopPropagation();
-      wrap.classList.toggle('hidden');
-    });
+    toggle.addEventListener('click', function(e){ e.stopPropagation(); wrap.classList.toggle('hidden'); });
     document.addEventListener('click', function(e){
-      if (window.innerWidth < 640 && wrap && !wrap.classList.contains('hidden') && !wrap.contains(e.target) && e.target !== toggle) {
-        wrap.classList.add('hidden');
-      }
+      if (window.innerWidth < 640 && wrap && !wrap.classList.contains('hidden') && !wrap.contains(e.target) && e.target !== toggle) wrap.classList.add('hidden');
     });
   }
-
   var toast = document.getElementById('toast');
   var t;
   function showToast(msg){
