@@ -1,3 +1,3 @@
-title: Bird with blade
+title: Bird-with-blade
 photos:
   - /images/9.webp
