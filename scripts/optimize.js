@@ -18,7 +18,6 @@ const FONT_DEST = path.join(PUBLIC_DIR, 'fonts/inter.woff2');
 const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/* ─── Icons (Lucide inline) ─── */
 const icons = {
   images: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M18 22H4a2 2 0 0 1-2-2V6"/><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18"/><circle cx="12" cy="8" r="2"/><rect width="16" height="16" x="6" y="2" rx="2"/></svg>`,
   search: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
@@ -27,34 +26,100 @@ const icons = {
   imageOff: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" x2="6" y1="13.5" y2="21"/><line x1="18" x2="21" y1="12" y2="15"/><path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59"/><path d="M21 15V5a2 2 0 0 0-2-2H9"/></svg>`,
 };
 
-/* ─── Title Map (caption dari YAML Pages CMS) ─── */
+/* ─── Title Map — VERBOSE LOG biar ketahuan salahnya di mana ─── */
 async function getTitleMap() {
   const map = {};
   const files = await glob('content/gallery/*.{yml,yaml}', { nodir: true });
+
+  console.log(`\n═══════════════════════════════════════════════`);
+  console.log(`📂 Membaca ${files.length} file YAML di content/gallery/`);
+  console.log(`═══════════════════════════════════════════════\n`);
+
+  if (files.length === 0) {
+    console.log(`⚠️  Tidak ada file YAML. Kemungkinan:`);
+    console.log(`   - path di .pages.yml bukan "content/gallery"`);
+    console.log(`   - belum ada entry yang disimpan lewat Pages CMS`);
+    console.log(`   - Pages CMS simpan di folder lain\n`);
+    return map;
+  }
+
   for (const f of files) {
     try {
       const data = yaml.load(await fs.readFile(f, 'utf8'));
-      if (!data?.title) continue;
-      const imgs = Array.isArray(data.photos)
-        ? data.photos
-        : data.image
-          ? [data.image]
-          : [];
-      for (const p of imgs) {
-        if (typeof p === 'string') map[p.replace(/^\//, '')] = data.title;
+      const fname = path.basename(f);
+
+      if (!data || typeof data !== 'object') {
+        console.log(`  ⚠️  ${fname}: file kosong / bukan object`);
+        continue;
+      }
+
+      if (!data.title) {
+        console.log(`  ⚠️  ${fname}: TIDAK ADA field "title"`);
+        console.log(`     Field yang ada: ${Object.keys(data).join(', ')}`);
+        continue;
+      }
+
+      // Cari field gambar dengan nama apapun yang umum
+      let imgs = null;
+      let fieldName = null;
+      for (const key of ['photos', 'images', 'image', 'foto', 'gambar', 'files', 'media']) {
+        if (data[key] !== undefined && data[key] !== null) {
+          fieldName = key;
+          imgs = Array.isArray(data[key]) ? data[key] : [data[key]];
+          break;
+        }
+      }
+
+      if (!imgs) {
+        console.log(`  ⚠️  ${fname}: title ada ("${data.title}") tapi field gambar TIDAK ADA`);
+        console.log(`     Field yang ada: ${Object.keys(data).join(', ')}`);
+        continue;
+      }
+
+      console.log(`  📄 ${fname}`);
+      console.log(`     title: "${data.title}"`);
+      console.log(`     field gambar: "${fieldName}" (${imgs.length} item)`);
+
+      for (const item of imgs) {
+        let p = null;
+        if (typeof item === 'string') {
+          p = item;
+        } else if (item && typeof item === 'object') {
+          p = item.path || item.src || item.url || item.image || item.file;
+        }
+
+        if (!p) {
+          console.log(`     ⚠️  Item bukan string/object path: ${JSON.stringify(item).slice(0, 120)}`);
+          continue;
+        }
+
+        // Simpan dengan berbagai format key untuk robust matching
+        const clean = String(p).replace(/^\//, '');
+        map[clean] = data.title;                              // images/xxx.png
+        map[path.basename(clean)] = data.title;               // xxx.png
+        map[clean.replace(/^images\//, '')] = data.title;     // xxx.png (tanpa prefix)
+        console.log(`     ✓ ${clean} → "${data.title}"`);
       }
     } catch (e) {
-      console.warn(`⚠️  Gagal baca ${f}: ${e.message}`);
+      console.warn(`  ❌ ${path.basename(f)}: ${e.message}`);
     }
   }
-  console.log(`🗂️  ${Object.keys(map).length} gambar punya caption dari ${files.length} YAML`);
+
+  console.log(`\n🗂️  Total: ${Object.keys(map).length} entri caption ter-map\n`);
   return map;
 }
 
 /* ─── Processing ─── */
 async function processImage(file, titleMap) {
   const base = path.basename(file, path.extname(file));
-  const title = titleMap[file] || base;
+
+  // Coba berbagai format key
+  const title =
+    titleMap[file] ||
+    titleMap[path.basename(file)] ||
+    titleMap[file.replace(/^images\//, '')] ||
+    base;
+
   const slug = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const outDir = path.join(OUTPUT_DIR, slug);
   await fs.mkdir(outDir, { recursive: true });
@@ -107,7 +172,6 @@ const buildPicture = (img) => {
 const fmtSize = (b) =>
   b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : b > 1024 ? (b / 1024).toFixed(0) + ' KB' : b + ' B';
 
-/* ─── Card ─── */
 function cardHtml(img) {
   const avifSrcset = buildSrcset(img.variants, 'avif');
   const webpSrcset = buildSrcset(img.variants, 'webp');
@@ -122,41 +186,41 @@ function cardHtml(img) {
     SIZES
       .map(s => img.variants.find(v => v.size === s && v.format === format))
       .filter(Boolean)
-      .map(v => `<button class="copy-btn inline-flex items-center rounded-md border border-border bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(v.url)}">${v.size}w</button>`)
+      .map(v => `<button class="copy-btn inline-flex items-center rounded-md border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(v.url)}">${v.size}w</button>`)
       .join('');
 
   return `
-  <article class="card group mb-5 sm:mb-4 break-inside-avoid overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+  <article class="card group mb-6 break-inside-avoid overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:border-primary/40 hover:shadow-lg">
     <div class="relative overflow-hidden bg-muted">
-      <img src="${thumb.url}" alt="${esc(img.name)}" loading="lazy" decoding="async" width="${img.width}" height="${img.height}" class="block h-auto w-full transition-opacity duration-300 group-hover:opacity-90">
+      <img src="${thumb.url}" alt="${esc(img.name)}" loading="lazy" decoding="async" width="${img.width}" height="${img.height}" class="block h-auto w-full transition-opacity duration-300 group-hover:opacity-95">
     </div>
-    <div class="flex flex-col gap-3 p-4 sm:p-4">
-      <div class="flex flex-col gap-1">
+    <div class="flex flex-col gap-3 p-5">
+      <div class="flex flex-col gap-1.5">
         <h3 class="truncate text-sm font-semibold" title="${esc(img.name)}">${esc(img.name)}</h3>
         <p class="text-xs text-muted-foreground">${img.width} × ${img.height} · ${img.variants.length} varian</p>
       </div>
-      <div class="flex flex-col gap-2">
-        <button class="copy-btn inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" data-copy="${esc(pictureHtml)}">
+      <div class="flex flex-col gap-2.5">
+        <button class="copy-btn inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" data-copy="${esc(pictureHtml)}">
           ${icons.copy}
           <span>Copy &lt;picture&gt;</span>
         </button>
         <div class="grid grid-cols-2 gap-2">
-          <button class="copy-btn inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(avifSrcset)}">AVIF srcset</button>
-          <button class="copy-btn inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(webpSrcset)}">WebP srcset</button>
+          <button class="copy-btn inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(avifSrcset)}">AVIF srcset</button>
+          <button class="copy-btn inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(webpSrcset)}">WebP srcset</button>
         </div>
         <details class="group text-xs text-muted-foreground">
           <summary class="flex cursor-pointer items-center justify-between rounded-md px-1 py-1 hover:text-foreground">
             <span>Ukuran individual</span>
             <span class="transition-transform group-open:rotate-180">${icons.chevronDown}</span>
           </summary>
-          <div class="mt-2 flex flex-col gap-2">
+          <div class="mt-3 flex flex-col gap-3">
             <div>
-              <div class="mb-1 text-[10px] uppercase tracking-wider">AVIF</div>
-              <div class="flex flex-wrap gap-1">${sizePills('avif')}</div>
+              <div class="mb-1.5 text-[10px] uppercase tracking-wider font-semibold">AVIF</div>
+              <div class="flex flex-wrap gap-1.5">${sizePills('avif')}</div>
             </div>
             <div>
-              <div class="mb-1 text-[10px] uppercase tracking-wider">WebP</div>
-              <div class="flex flex-wrap gap-1">${sizePills('webp')}</div>
+              <div class="mb-1.5 text-[10px] uppercase tracking-wider font-semibold">WebP</div>
+              <div class="flex flex-wrap gap-1.5">${sizePills('webp')}</div>
             </div>
           </div>
         </details>
@@ -165,7 +229,6 @@ function cardHtml(img) {
   </article>`;
 }
 
-/* ─── Gallery ─── */
 async function generateGallery(images) {
   const cards = images.map(cardHtml).join('\n');
   const totalSize = images.reduce((sum, img) => sum + img.variants.reduce((s, v) => s + v.bytes, 0), 0);
@@ -176,7 +239,7 @@ async function generateGallery(images) {
       <h2 class="text-lg font-semibold text-foreground">Belum ada gambar</h2>
       <p class="mt-1 text-sm">Upload lewat Pages CMS atau taruh di <code class="rounded bg-muted px-1.5 py-0.5 text-xs">images/</code></p>
     </div>` : `
-    <div class="columns-1 gap-5 sm:columns-2 sm:gap-4 md:columns-3 lg:columns-4 xl:columns-5" id="grid">
+    <div class="columns-1 gap-6 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5" id="grid">
       ${cards}
     </div>`;
 
@@ -186,11 +249,23 @@ async function generateGallery(images) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FZH Assets · Image Library</title>
+<style>
+  /* Critical fallback — kalau /app.css 404, design dasar tetap ada */
+  body{margin:0;background:#fff;color:#18181b;font-family:system-ui,-apple-system,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  header{padding:16px 20px;border-bottom:1px solid #e4e4e7;background:rgba(255,255,255,.9);position:sticky;top:0;backdrop-filter:blur(8px);z-index:40}
+  main{max-width:1280px;margin:0 auto;padding:28px 20px}
+  @media(min-width:640px){main{padding:32px 24px}}
+  @media(min-width:768px){main{padding:40px 24px}}
+  .card{background:#fff;border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;margin-bottom:24px}
+  .copy-btn{cursor:pointer;border-radius:6px;border:1px solid #e4e4e7;background:#f4f4f5;padding:8px 12px;font:inherit;font-size:13px;font-weight:500}
+  .copy-btn.primary{background:#4f46e5;color:#fff;border-color:#4f46e5}
+  img{max-width:100%;height:auto;display:block}
+</style>
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
 <header class="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
-  <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-5 py-4 sm:px-6">
+  <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-6 py-4 sm:px-8">
     <a href="/" class="flex items-center gap-2 text-lg font-bold tracking-tight text-foreground">
       <span class="text-primary">${icons.images}</span>
       <span>FZH <span class="text-primary">Assets</span></span>
@@ -202,11 +277,11 @@ async function generateGallery(images) {
     </div>
     <div class="relative ml-auto w-full max-w-sm sm:w-auto sm:flex-1 sm:max-w-md">
       <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">${icons.search}</span>
-      <input type="search" id="search" placeholder="Cari nama gambar..." autocomplete="off" class="w-full rounded-md border border-border bg-secondary px-3 py-2 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary">
+      <input type="search" id="search" placeholder="Cari nama gambar..." autocomplete="off" class="w-full rounded-md border border-border bg-secondary px-3 py-2.5 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary">
     </div>
   </div>
 </header>
-<main class="mx-auto max-w-7xl px-5 py-6 sm:px-6 sm:py-8 md:py-10">
+<main class="mx-auto max-w-7xl px-6 py-7 sm:px-8 sm:py-8 md:py-10">
   ${bodyContent}
 </main>
 <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 translate-y-20 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground opacity-0 shadow-lg shadow-primary/25 transition-all duration-300" id="toast"></div>
