@@ -18,7 +18,6 @@ const FONT_DEST = path.join(PUBLIC_DIR, 'fonts/inter.woff2');
 const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/* ─── Icons (Lucide inline) ─── */
 const icons = {
   images: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M18 22H4a2 2 0 0 1-2-2V6"/><path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18"/><circle cx="12" cy="8" r="2"/><rect width="16" height="16" x="6" y="2" rx="2"/></svg>`,
   search: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
@@ -27,34 +26,84 @@ const icons = {
   imageOff: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" x2="6" y1="13.5" y2="21"/><line x1="18" x2="21" y1="12" y2="15"/><path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59"/><path d="M21 15V5a2 2 0 0 0-2-2H9"/></svg>`,
 };
 
-/* ─── Title Map (caption dari YAML Pages CMS) ─── */
+/* ─── Title Map: Robust, handle berbagai format YAML ─── */
 async function getTitleMap() {
   const map = {};
   const files = await glob('content/gallery/*.{yml,yaml}', { nodir: true });
+  console.log(`\n📂 YAML files found: ${files.length}`);
+
   for (const f of files) {
     try {
       const data = yaml.load(await fs.readFile(f, 'utf8'));
-      if (!data?.title) continue;
-      const imgs = Array.isArray(data.photos)
-        ? data.photos
-        : data.image
-          ? [data.image]
-          : [];
-      for (const p of imgs) {
-        if (typeof p === 'string') map[p.replace(/^\//, '')] = data.title;
+      if (!data || typeof data !== 'object') continue;
+
+      const title = data.title || data.caption || data.name;
+      if (!title) {
+        console.log(`  ⚠️ ${path.basename(f)}: no title field. Keys: ${Object.keys(data).join(', ')}`);
+        continue;
+      }
+
+      // Kumpulkan semua field yang mungkin berisi gambar
+      const candidates = [];
+      for (const key of ['photos', 'images', 'image', 'foto', 'gambar', 'files', 'media', 'gallery']) {
+        if (data[key]) {
+          const val = data[key];
+          if (Array.isArray(val)) {
+            for (const item of val) candidates.push({ key, item });
+          } else {
+            candidates.push({ key, item: val });
+          }
+        }
+      }
+
+      if (candidates.length === 0) {
+        console.log(`  ⚠️ ${path.basename(f)}: title="${title}" but no image field found`);
+        continue;
+      }
+
+      for (const { item } of candidates) {
+        let p = null;
+        if (typeof item === 'string') {
+          p = item;
+        } else if (item && typeof item === 'object') {
+          p = item.path || item.src || item.url || item.image || item.file || item.value;
+        }
+        if (!p) continue;
+
+        // Normalisasi: hapus leading slash, decode URI, ambil basename
+        let clean = String(p).replace(/^\//, '');
+        try { clean = decodeURIComponent(clean); } catch {}
+        const basename = path.basename(clean);
+
+        // Simpan berbagai format key untuk matching
+        map[clean] = title;                          // images/xxx.png
+        map[basename] = title;                       // xxx.png
+        map[clean.replace(/^images\//, '')] = title; // xxx.png (tanpa prefix)
+        map[`images/${basename}`] = title;           // images/xxx.png
+
+        console.log(`  ✓ ${basename} → "${title}"`);
       }
     } catch (e) {
-      console.warn(`⚠️  Gagal baca ${f}: ${e.message}`);
+      console.warn(`  ❌ ${path.basename(f)}: ${e.message}`);
     }
   }
-  console.log(`🗂️  ${Object.keys(map).length} gambar punya caption dari ${files.length} YAML`);
+
+  console.log(`🗂️ Caption map entries: ${Object.keys(map).length}\n`);
   return map;
 }
 
 /* ─── Processing ─── */
 async function processImage(file, titleMap) {
   const base = path.basename(file, path.extname(file));
-  const title = titleMap[file] || base;
+
+  // Lookup bertingkat: full path, basename, tanpa prefix
+  const title =
+    titleMap[file] ||
+    titleMap[path.basename(file)] ||
+    titleMap[file.replace(/^images\//, '')] ||
+    titleMap[`images/${path.basename(file)}`] ||
+    base;
+
   const slug = base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const outDir = path.join(OUTPUT_DIR, slug);
   await fs.mkdir(outDir, { recursive: true });
@@ -80,14 +129,7 @@ async function processImage(file, titleMap) {
     .jpeg({ quality: 82 })
     .toFile(path.join(outDir, 'fallback.jpg'));
 
-  return {
-    slug,
-    name: title,
-    fallback: `/images/${slug}/fallback.jpg`,
-    width: meta.width,
-    height: meta.height,
-    variants,
-  };
+  return { slug, name: title, fallback: `/images/${slug}/fallback.jpg`, width: meta.width, height: meta.height, variants };
 }
 
 const buildSrcset = (variants, format) =>
@@ -107,7 +149,6 @@ const buildPicture = (img) => {
 const fmtSize = (b) =>
   b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : b > 1024 ? (b / 1024).toFixed(0) + ' KB' : b + ' B';
 
-/* ─── Card ─── */
 function cardHtml(img) {
   const avifSrcset = buildSrcset(img.variants, 'avif');
   const webpSrcset = buildSrcset(img.variants, 'webp');
@@ -119,45 +160,36 @@ function cardHtml(img) {
              || { url: img.fallback };
 
   const sizePills = (format) =>
-    SIZES
-      .map(s => img.variants.find(v => v.size === s && v.format === format))
-      .filter(Boolean)
-      .map(v => `<button class="copy-btn inline-flex items-center rounded-md border border-border bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(v.url)}">${v.size}w</button>`)
+    SIZES.map(s => img.variants.find(v => v.size === s && v.format === format)).filter(Boolean)
+      .map(v => `<button class="copy-btn inline-flex items-center rounded-md border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(v.url)}">${v.size}w</button>`)
       .join('');
 
   return `
-  <article class="card group mb-5 sm:mb-4 break-inside-avoid overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+  <article class="card group mb-6 break-inside-avoid overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:border-foreground/20 hover:shadow-lg">
     <div class="relative overflow-hidden bg-muted">
-      <img src="${thumb.url}" alt="${esc(img.name)}" loading="lazy" decoding="async" width="${img.width}" height="${img.height}" class="block h-auto w-full transition-opacity duration-300 group-hover:opacity-90">
+      <img src="${thumb.url}" alt="${esc(img.name)}" loading="lazy" decoding="async" width="${img.width}" height="${img.height}" class="block h-auto w-full transition-opacity duration-300 group-hover:opacity-95">
     </div>
-    <div class="flex flex-col gap-3 p-4 sm:p-4">
-      <div class="flex flex-col gap-1">
+    <div class="flex flex-col gap-3 p-5">
+      <div class="flex flex-col gap-1.5">
         <h3 class="truncate text-sm font-semibold" title="${esc(img.name)}">${esc(img.name)}</h3>
         <p class="text-xs text-muted-foreground">${img.width} × ${img.height} · ${img.variants.length} varian</p>
       </div>
-      <div class="flex flex-col gap-2">
-        <button class="copy-btn inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" data-copy="${esc(pictureHtml)}">
-          ${icons.copy}
-          <span>Copy &lt;picture&gt;</span>
+      <div class="flex flex-col gap-2.5">
+        <button class="copy-btn inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" data-copy="${esc(pictureHtml)}">
+          ${icons.copy}<span>Copy &lt;picture&gt;</span>
         </button>
         <div class="grid grid-cols-2 gap-2">
-          <button class="copy-btn inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(avifSrcset)}">AVIF srcset</button>
-          <button class="copy-btn inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(webpSrcset)}">WebP srcset</button>
+          <button class="copy-btn inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(avifSrcset)}">AVIF srcset</button>
+          <button class="copy-btn inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent" data-copy="${esc(webpSrcset)}">WebP srcset</button>
         </div>
         <details class="group text-xs text-muted-foreground">
           <summary class="flex cursor-pointer items-center justify-between rounded-md px-1 py-1 hover:text-foreground">
             <span>Ukuran individual</span>
             <span class="transition-transform group-open:rotate-180">${icons.chevronDown}</span>
           </summary>
-          <div class="mt-2 flex flex-col gap-2">
-            <div>
-              <div class="mb-1 text-[10px] uppercase tracking-wider">AVIF</div>
-              <div class="flex flex-wrap gap-1">${sizePills('avif')}</div>
-            </div>
-            <div>
-              <div class="mb-1 text-[10px] uppercase tracking-wider">WebP</div>
-              <div class="flex flex-wrap gap-1">${sizePills('webp')}</div>
-            </div>
+          <div class="mt-3 flex flex-col gap-3">
+            <div><div class="mb-1.5 text-[10px] uppercase tracking-wider font-semibold">AVIF</div><div class="flex flex-wrap gap-1.5">${sizePills('avif')}</div></div>
+            <div><div class="mb-1.5 text-[10px] uppercase tracking-wider font-semibold">WebP</div><div class="flex flex-wrap gap-1.5">${sizePills('webp')}</div></div>
           </div>
         </details>
       </div>
@@ -165,7 +197,6 @@ function cardHtml(img) {
   </article>`;
 }
 
-/* ─── Gallery ─── */
 async function generateGallery(images) {
   const cards = images.map(cardHtml).join('\n');
   const totalSize = images.reduce((sum, img) => sum + img.variants.reduce((s, v) => s + v.bytes, 0), 0);
@@ -176,7 +207,7 @@ async function generateGallery(images) {
       <h2 class="text-lg font-semibold text-foreground">Belum ada gambar</h2>
       <p class="mt-1 text-sm">Upload lewat Pages CMS atau taruh di <code class="rounded bg-muted px-1.5 py-0.5 text-xs">images/</code></p>
     </div>` : `
-    <div class="columns-1 gap-5 sm:columns-2 sm:gap-4 md:columns-3 lg:columns-4 xl:columns-5" id="grid">
+    <div class="columns-1 gap-6 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5" id="grid">
       ${cards}
     </div>`;
 
@@ -189,59 +220,85 @@ async function generateGallery(images) {
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<header class="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
-  <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-5 py-4 sm:px-6">
-    <a href="/" class="flex items-center gap-2 text-lg font-bold tracking-tight text-foreground">
+<header class="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+  <div class="mx-auto flex max-w-7xl items-center gap-3 px-5 py-4 sm:px-6">
+    <a href="/" class="flex shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-foreground">
       <span class="text-primary">${icons.images}</span>
       <span>FZH <span class="text-primary">Assets</span></span>
     </a>
-    <div class="hidden items-center gap-3 text-xs text-muted-foreground md:flex">
-      <span><b class="text-foreground">${images.length}</b> gambar</span>
-      <span class="text-border">·</span>
-      <span><b class="text-foreground">${fmtSize(totalSize)}</b> varian</span>
-    </div>
-    <div class="relative ml-auto w-full max-w-sm sm:w-auto sm:flex-1 sm:max-w-md">
-      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">${icons.search}</span>
-      <input type="search" id="search" placeholder="Cari nama gambar..." autocomplete="off" class="w-full rounded-md border border-border bg-secondary px-3 py-2 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary">
+
+    <!-- Search: icon-only di mobile, expand di desktop -->
+    <div class="ml-auto flex items-center gap-2 sm:flex-1 sm:justify-end">
+      <div class="hidden items-center gap-3 text-xs text-muted-foreground md:flex">
+        <span><b class="text-foreground">${images.length}</b> gambar</span>
+        <span class="text-border">·</span>
+        <span><b class="text-foreground">${fmtSize(totalSize)}</b> varian</span>
+      </div>
+
+      <div class="relative sm:w-full sm:max-w-md">
+        <button type="button" id="searchToggle" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-secondary text-muted-foreground transition-colors hover:bg-accent sm:hidden" aria-label="Cari">
+          ${icons.search}
+        </button>
+        <div id="searchWrap" class="absolute right-0 top-full z-50 mt-2 hidden w-72 rounded-md border border-border bg-background p-1 shadow-lg sm:static sm:mt-0 sm:block sm:w-full sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+          <div class="relative">
+            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">${icons.search}</span>
+            <input type="search" id="search" placeholder="Cari nama gambar..." autocomplete="off" class="w-full rounded-md border border-border bg-secondary px-3 py-2.5 pl-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground focus:bg-background focus:outline-none focus:ring-1 focus:ring-foreground">
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </header>
-<main class="mx-auto max-w-7xl px-5 py-6 sm:px-6 sm:py-8 md:py-10">
+<main class="mx-auto max-w-7xl px-5 py-7 sm:px-6 sm:py-8 md:py-10">
   ${bodyContent}
 </main>
-<div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 translate-y-20 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground opacity-0 shadow-lg shadow-primary/25 transition-all duration-300" id="toast"></div>
+<div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 translate-y-20 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground opacity-0 shadow-lg transition-all duration-300" id="toast"></div>
 <script>
 (function(){
-  const toast = document.getElementById('toast');
-  let t;
-  const showToast = (msg) => {
+  // Search toggle mobile
+  var toggle = document.getElementById('searchToggle');
+  var wrap = document.getElementById('searchWrap');
+  if (toggle && wrap) {
+    toggle.addEventListener('click', function(e){
+      e.stopPropagation();
+      wrap.classList.toggle('hidden');
+    });
+    document.addEventListener('click', function(e){
+      if (window.innerWidth < 640 && wrap && !wrap.classList.contains('hidden') && !wrap.contains(e.target) && e.target !== toggle) {
+        wrap.classList.add('hidden');
+      }
+    });
+  }
+
+  var toast = document.getElementById('toast');
+  var t;
+  function showToast(msg){
     toast.textContent = msg || '✓ Copied!';
-    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.remove('translate-y-20','opacity-0');
     clearTimeout(t);
-    t = setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 1500);
-  };
-  const copy = async (text, el) => {
-    try {
-      await navigator.clipboard.writeText(text);
+    t = setTimeout(function(){ toast.classList.add('translate-y-20','opacity-0'); }, 1500);
+  }
+  function copy(text, el){
+    navigator.clipboard.writeText(text).then(function(){
       if (el) {
-        const orig = el.innerHTML;
+        var orig = el.innerHTML;
         el.innerHTML = '<span>✓ Copied!</span>';
         el.classList.add('copied');
-        setTimeout(() => { el.innerHTML = orig; el.classList.remove('copied'); }, 1200);
+        setTimeout(function(){ el.innerHTML = orig; el.classList.remove('copied'); }, 1200);
       }
       showToast();
-    } catch(e) { showToast('❌ Gagal copy'); }
-  };
-  document.querySelectorAll('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => { e.stopPropagation(); copy(btn.dataset.copy, btn); });
+    }).catch(function(){ showToast('❌ Gagal copy'); });
+  }
+  document.querySelectorAll('.copy-btn').forEach(function(btn){
+    btn.addEventListener('click', function(e){ e.stopPropagation(); copy(btn.dataset.copy, btn); });
   });
-  const search = document.getElementById('search');
+  var search = document.getElementById('search');
   if (search) {
-    search.addEventListener('input', (e) => {
-      const q = e.target.value.trim().toLowerCase();
-      document.querySelectorAll('.card').forEach(card => {
-        const name = card.querySelector('h3').textContent.toLowerCase();
-        card.style.display = name.includes(q) ? '' : 'none';
+    search.addEventListener('input', function(e){
+      var q = e.target.value.trim().toLowerCase();
+      document.querySelectorAll('.card').forEach(function(card){
+        var name = card.querySelector('h3').textContent.toLowerCase();
+        card.style.display = name.indexOf(q) !== -1 ? '' : 'none';
       });
     });
   }
@@ -255,11 +312,8 @@ async function generateGallery(images) {
 
 async function copyFont() {
   await fs.mkdir(path.join(PUBLIC_DIR, 'fonts'), { recursive: true });
-  try {
-    await fs.copyFile(FONT_SRC, FONT_DEST);
-  } catch {
-    console.warn('⚠️  Inter font tidak ditemukan, fallback ke system font');
-  }
+  try { await fs.copyFile(FONT_SRC, FONT_DEST); }
+  catch { console.warn('⚠️ Inter font tidak ditemukan'); }
 }
 
 async function main() {
@@ -271,20 +325,19 @@ async function main() {
   const files = await glob(`${INPUT_DIR}/*.{jpg,jpeg,png,webp,avif,JPG,JPEG,PNG,WEBP}`, { nodir: true });
 
   if (files.length === 0) {
-    console.log('⚠️  Tidak ada gambar di folder images/');
+    console.log('⚠️ Tidak ada gambar');
     await generateGallery([]);
     return;
   }
 
-  console.log(`📦 Memproses ${files.length} gambar...\n`);
   const images = [];
   for (const file of files) {
-    console.log(`  → ${path.basename(file)}`);
+    console.log(`  → ${path.basename(file)} (caption: "${titleMap[file] || titleMap[path.basename(file)] || '—'}")`);
     images.push(await processImage(file, titleMap));
   }
   await generateGallery(images);
   await fs.writeFile(path.join(PUBLIC_DIR, 'manifest.json'), JSON.stringify(images, null, 2));
-  console.log(`\n✅ Selesai: ${images.length} gambar diproses`);
+  console.log(`\n✅ Selesai: ${images.length} gambar\n`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
